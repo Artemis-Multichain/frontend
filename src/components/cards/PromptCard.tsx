@@ -76,7 +76,7 @@ const PromptCard = ({ img, name, prompt, creator, price, cid }) => {
               <div className="flex flex-col w-full px-2 ">
                 <p>Price:</p>
                 <p className="flex items-center text-sm">
-                  <span>{price} APT</span>
+                  <span>{price} USD</span>
                 </p>
               </div>
               <div className="flex flex-col">

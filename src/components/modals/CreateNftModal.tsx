@@ -194,34 +194,34 @@ const CreateNftModal = ({
 
       console.log(txReceipt?.hash || null);
 
-      // if (isSwitchEnabled) {
-      //   await axios.post(
-      //     'https://deep-zitella-artemys-846660d9.koyeb.app/marketplace/add-premium-prompts/',
-      //     {
-      //       ipfs_image_url: imageUrl,
-      //       account_address: address,
-      //       prompt: promptValue,
-      //       post_name: promptNftName,
-      //       cid: metadataUrl,
-      //       prompt_tag: '3D Art',
-      //       collection_name: promptNftName,
-      //       max_supply: maxSupply,
-      //       prompt_nft_price: publicMintFeePerNFT,
-      //     }
-      //   );
-      // } else {
-      //   await axios.post(
-      //     `https://deep-zitella-artemys-846660d9.koyeb.app/prompts/add-public-prompts/`,
-      //     {
-      //       ipfs_image_url: imageUrl,
-      //       prompt: promptValue,
-      //       account_address: address,
-      //       post_name: promptNftName,
-      //       public: true,
-      //       prompt_tag: '3D Art',
-      //     }
-      //   );
-      // }
+      if (isSwitchEnabled) {
+        await axios.post(
+          'https://deep-zitella-artemys-846660d9.koyeb.app/marketplace/add-premium-prompts/',
+          {
+            ipfs_image_url: imageUrl,
+            account_address: address,
+            prompt: promptValue,
+            post_name: promptNftName,
+            cid: metadataUrl,
+            prompt_tag: '3D Art',
+            collection_name: promptNftName,
+            max_supply: maxSupply,
+            prompt_nft_price: usdPrice,
+          }
+        );
+      } else {
+        await axios.post(
+          `https://deep-zitella-artemys-846660d9.koyeb.app/prompts/add-public-prompts/`,
+          {
+            ipfs_image_url: imageUrl,
+            prompt: promptValue,
+            account_address: address,
+            post_name: promptNftName,
+            public: true,
+            prompt_tag: '3D Art',
+          }
+        );
+      }
 
       setPromptNftName('');
       setPromptNftDescription('');

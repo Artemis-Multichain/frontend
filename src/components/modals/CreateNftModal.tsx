@@ -1,5 +1,4 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
-// @ts-nocheck
 import { Dialog, Transition } from '@headlessui/react';
 import Link from 'next/link';
 import { Fragment, useEffect, useState } from 'react';
@@ -10,13 +9,29 @@ import SwitchButton from '../Switch';
 import base64ToBlob from '@/utils/base64toBlob';
 import { useImages } from '@/context/ImageContext';
 import { encryptPrompt } from '@/utils/encryptPrompt';
+import AIPromptMarketplace from '@/abi/AIPromptMarketplace.json';
+import { config } from '@/abi';
 import generateKey from '@/utils/generateKey';
 import axios from 'axios';
 import { ClipLoader } from 'react-spinners';
+import { useAccount, useSmartAccount } from '@particle-network/connectkit';
+import { AAWrapProvider, SendTransactionMode } from '@particle-network/aa';
+import { ethers, type Eip1193Provider } from 'ethers';
 
-const CreateNftModal = ({ openModal, handleOnClose, image }) => {
+interface CreateNftModalProps {
+  openModal: boolean;
+  handleOnClose: () => void;
+  image: string;
+}
+
+const CreateNftModal = ({
+  openModal,
+  handleOnClose,
+  image,
+}: CreateNftModalProps) => {
   const { prompts } = useImages();
-  const account = '';
+  const { isConnected, address } = useAccount();
+  const smartAccount = useSmartAccount();
   const [promptNftName, setPromptNftName] = useState('');
   const [promptNftDescription, setPromptNftDescription] = useState('');
   const [attr, setAttr] = useState([
@@ -26,6 +41,7 @@ const CreateNftModal = ({ openModal, handleOnClose, image }) => {
     { trait_type: 'prompts', value: '' },
     { trait_type: 'type', value: '' },
   ]);
+  const [price, setNftPrice] = useState(0);
   const [maxSupply, setMaxSupply] = useState(3000);
   const [publicMintFeePerNFT, setPublicMintFeePerNFT] = useState(0.1);
   const [txHash, setTxHash] = useState('');
@@ -37,130 +53,189 @@ const CreateNftModal = ({ openModal, handleOnClose, image }) => {
   const pinataSecretApiKey = process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY;
   const pinataEndpoint = 'https://api.pinata.cloud/pinning/pinFileToIPFS';
 
+  const customProvider = smartAccount
+    ? new ethers.BrowserProvider(
+        new AAWrapProvider(
+          smartAccount,
+          SendTransactionMode.UserPaidNative
+        ) as Eip1193Provider,
+        'any'
+      )
+    : null;
+
   const handleModalClose = () => {
     handleOnClose();
     setCompletedMint(false);
   };
 
-  // const createPromptNFT = async (e) => {
-  //   e.preventDefault();
+  interface Attribute {
+    trait_type: string;
+    value: string;
+  }
 
-  //   if (!account || !account.address) {
-  //     toast.error('Please connect your wallet first');
-  //     return;
-  //   }
+  interface Metadata {
+    name: string;
+    description: string;
+    image: string;
+    attributes: Attribute[];
+  }
 
-  //   let base64String = image;
-  //   let imageType = 'image/jpeg';
-  //   let blob = base64ToBlob(base64String, imageType);
+  const createPromptNFT = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-  //   let promptValue;
-  //   if (isSwitchEnabled) {
-  //     const promptKey = generateKey(promptNftName);
-  //     promptValue = encryptPrompt(prompts, promptKey);
-  //   } else {
-  //     promptValue = prompts;
-  //   }
+    if (!address) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
 
-  //   let updatedAttr = [...attr];
-  //   updatedAttr[3].value = promptValue;
-  //   updatedAttr[2].value = 'Base';
-  //   updatedAttr[1].value = account.address;
-  //   updatedAttr[4].value = isSwitchEnabled ? 'premium' : 'public';
+    let base64String = image;
+    let imageType = 'image/jpeg';
+    let blob = base64ToBlob(base64String, imageType);
 
-  //   setAttr(updatedAttr);
+    let promptValue: string;
+    if (isSwitchEnabled) {
+      const promptKey = generateKey(promptNftName);
+      promptValue = encryptPrompt(prompts, promptKey);
+    } else {
+      promptValue = prompts;
+    }
 
-  //   try {
-  //     setLoading(true);
+    let updatedAttr: Attribute[] = [...attr];
+    updatedAttr[3].value = promptValue;
+    updatedAttr[2].value = 'Base';
+    updatedAttr[1].value = address;
+    updatedAttr[4].value = isSwitchEnabled ? 'premium' : 'public';
 
-  //     const formData = new FormData();
-  //     formData.append('file', blob);
+    setAttr(updatedAttr);
 
-  //     const imagePinataResponse = await axios.post(pinataEndpoint, formData, {
-  //       headers: {
-  //         'Content-Type': `multipart/form-data; boundary=${formData._boundary}`,
-  //         pinata_api_key: pinataApiKey,
-  //         pinata_secret_api_key: pinataSecretApiKey,
-  //       },
-  //     });
+    try {
+      setLoading(true);
 
-  //     if (!imagePinataResponse.data.IpfsHash) {
-  //       throw new Error('Failed to upload image to Pinata');
-  //     }
+      const formData = new FormData();
+      formData.append('file', blob);
 
-  //     const imageUrl = `https://gateway.pinata.cloud/ipfs/${imagePinataResponse.data.IpfsHash}`;
+      const imagePinataResponse = await axios.post(pinataEndpoint, formData, {
+        headers: {
+          'Content-Type': `multipart/form-data; boundary=${
+            (formData as any)._boundary
+          }`,
+          pinata_api_key: pinataApiKey!,
+          pinata_secret_api_key: pinataSecretApiKey!,
+        },
+      });
 
-  //     const metadata = {
-  //       name: promptNftName,
-  //       description: promptNftDescription,
-  //       image: imageUrl,
-  //       attributes: updatedAttr,
-  //     };
+      if (!imagePinataResponse.data.IpfsHash) {
+        throw new Error('Failed to upload image to Pinata');
+      }
 
-  //     const jsonBlob = new Blob([JSON.stringify(metadata)], {
-  //       type: 'application/json',
-  //     });
-  //     formData.set('file', jsonBlob);
-  //     const metadataPinataResponse = await axios.post(
-  //       pinataEndpoint,
-  //       formData,
-  //       {
-  //         headers: {
-  //           'Content-Type': `multipart/form-data; boundary=${formData._boundary}`,
-  //           pinata_api_key: pinataApiKey,
-  //           pinata_secret_api_key: pinataSecretApiKey,
-  //         },
-  //       }
-  //     );
+      const imageUrl = `https://gateway.pinata.cloud/ipfs/${imagePinataResponse.data.IpfsHash}`;
 
-  //     if (!metadataPinataResponse.data.IpfsHash) {
-  //       throw new Error('Failed to upload metadata to Pinata');
-  //     }
+      const metadata: Metadata = {
+        name: promptNftName,
+        description: promptNftDescription,
+        image: imageUrl,
+        attributes: updatedAttr,
+      };
 
-  //     const metadataUrl = `https://gateway.pinata.cloud/ipfs/${metadataPinataResponse.data.IpfsHash}`;
+      const jsonBlob = new Blob([JSON.stringify(metadata)], {
+        type: 'application/json',
+      });
+      formData.set('file', jsonBlob);
+      const metadataPinataResponse = await axios.post(
+        pinataEndpoint,
+        formData,
+        {
+          headers: {
+            'Content-Type': `multipart/form-data; boundary=${
+              (formData as any)._boundary
+            }`,
+            pinata_api_key: pinataApiKey!,
+            pinata_secret_api_key: pinataSecretApiKey!,
+          },
+        }
+      );
 
-  //     if (isSwitchEnabled) {
-  //       await axios.post(
-  //         'https://deep-zitella-artemys-846660d9.koyeb.app/marketplace/add-premium-prompts/',
-  //         {
-  //           ipfs_image_url: imageUrl,
-  //           account_address: account.address,
-  //           prompt: promptValue,
-  //           post_name: promptNftName,
-  //           cid: metadataUrl,
-  //           prompt_tag: '3D Art',
-  //           collection_name: promptNftName,
-  //           max_supply: maxSupply,
-  //           prompt_nft_price: publicMintFeePerNFT,
-  //         }
-  //       );
-  //     } else {
-  //       await axios.post(
-  //         `https://deep-zitella-artemys-846660d9.koyeb.app/prompts/add-public-prompts/`,
-  //         {
-  //           ipfs_image_url: imageUrl,
-  //           prompt: promptValue,
-  //           account_address: account.address,
-  //           post_name: promptNftName,
-  //           public: true,
-  //           prompt_tag: '3D Art',
-  //         }
-  //       );
-  //     }
+      if (!metadataPinataResponse.data.IpfsHash) {
+        throw new Error('Failed to upload metadata to Pinata');
+      }
 
-  //     setPromptNftName('');
-  //     setPromptNftDescription('');
-  //     setMaxSupply(1);
-  //     setPublicMintFeePerNFT(0.1);
-  //     setCompletedMint(true);
-  //     setTxHash(response.hash);
-  //   } catch (error) {
-  //     console.error('Error in the overall NFT creation process:', error);
-  //     toast.error(`Error: ${error.message}`);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+      const metadataUrl = `https://gateway.pinata.cloud/ipfs/${metadataPinataResponse.data.IpfsHash}`;
+
+      if (!customProvider) {
+        throw new Error('Provider is not initialized');
+      }
+
+      const usdPrice = isSwitchEnabled ? price.toString() : '0';
+      const supply = isSwitchEnabled ? maxSupply : 1;
+
+      const signer = await customProvider.getSigner();
+
+      const nftPromptFactory = new ethers.Contract(
+        config.AIPromptMarketplace,
+        AIPromptMarketplace,
+        signer
+      );
+
+      const creationFee = await nftPromptFactory.creationFee();
+      console.log('Creation fee:', creationFee.toString());
+
+      const tx = await nftPromptFactory.createPromptNFT.populateTransaction(
+        supply,
+        metadataUrl,
+        ethers.parseEther(usdPrice),
+        10,
+        {
+          value: creationFee,
+        }
+      );
+
+      const txResponse = await signer.sendTransaction(tx);
+      const txReceipt = await txResponse.wait();
+
+      console.log(txReceipt?.hash || null);
+
+      // if (isSwitchEnabled) {
+      //   await axios.post(
+      //     'https://deep-zitella-artemys-846660d9.koyeb.app/marketplace/add-premium-prompts/',
+      //     {
+      //       ipfs_image_url: imageUrl,
+      //       account_address: address,
+      //       prompt: promptValue,
+      //       post_name: promptNftName,
+      //       cid: metadataUrl,
+      //       prompt_tag: '3D Art',
+      //       collection_name: promptNftName,
+      //       max_supply: maxSupply,
+      //       prompt_nft_price: publicMintFeePerNFT,
+      //     }
+      //   );
+      // } else {
+      //   await axios.post(
+      //     `https://deep-zitella-artemys-846660d9.koyeb.app/prompts/add-public-prompts/`,
+      //     {
+      //       ipfs_image_url: imageUrl,
+      //       prompt: promptValue,
+      //       account_address: address,
+      //       post_name: promptNftName,
+      //       public: true,
+      //       prompt_tag: '3D Art',
+      //     }
+      //   );
+      // }
+
+      setPromptNftName('');
+      setPromptNftDescription('');
+      setMaxSupply(1);
+      setPublicMintFeePerNFT(0.1);
+      setCompletedMint(true);
+      // setTxHash();
+    } catch (error: any) {
+      console.error('Error in the overall NFT creation process:', error);
+      toast.error(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!isSwitchEnabled) {
@@ -242,7 +317,7 @@ const CreateNftModal = ({ openModal, handleOnClose, image }) => {
                               onChange={(e) => setPromptNftName(e.target.value)}
                             />
                             <label
-                              for="floating"
+                              htmlFor="floating"
                               className="peer-focus:font-medium absolute text-sm text-gray-500 dark:text-gray-400 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:left-0 peer-focus:text-purple-600 peer-focus:dark:text-purple-500 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
                             >
                               Prompt NFT Name
@@ -261,7 +336,7 @@ const CreateNftModal = ({ openModal, handleOnClose, image }) => {
                               }
                             />
                             <label
-                              for="floating_repeat"
+                              htmlFor="floating_repeat"
                               className="peer-focus:font-medium absolute text-sm text-gray-500 dark:text-gray-400 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:left-0 peer-focus:text-purple-600 peer-focus:dark:text-purple-500 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
                             >
                               Prompt NFT Description (Optional)
@@ -269,10 +344,7 @@ const CreateNftModal = ({ openModal, handleOnClose, image }) => {
                           </div>
 
                           <div className="flex items-center justify-center z-0 w-full gap-4 mb-6 group">
-                            <span
-                              htmlFor="floating_repeat"
-                              className="text-gray-400 text-[15px]"
-                            >
+                            <span className="text-gray-400 text-[15px]">
                               Premium Prompt
                             </span>
                             <SwitchButton
@@ -281,14 +353,14 @@ const CreateNftModal = ({ openModal, handleOnClose, image }) => {
                             />
                           </div>
 
-                          <div class="text-gray-400 flex justify-center">
+                          <div className="text-gray-400 flex justify-center">
                             &nbsp;&nbsp;
                             <DestinationChain />
                           </div>
 
                           {isSwitchEnabled && (
-                            <div class="text-gray-400 flex flex-col items-center mt-6">
-                              <label for="quantity" class="block mb-1">
+                            <div className="text-gray-400 flex flex-col items-center mt-6">
+                              <label htmlFor="quantity" className="block mb-1">
                                 Maximum Supply:
                               </label>
 
@@ -329,7 +401,7 @@ const CreateNftModal = ({ openModal, handleOnClose, image }) => {
 
                           <button
                             type="submit"
-                            // onClick={appropriateCreateFunction}
+                            onClick={createPromptNFT}
                             className="text-white  bg-gradient-to-r from-purple-700 via-purple-500 to-pink-500 mt-3 hover:bg-purple-800 focus:ring-4 focus:outline-none focus:ring-purple-300  rounded-lg text-sm font-bold w-[140px] h-[40px]  px-8 py-2 text-center dark:bg-purple-600 dark:hover:bg-purple-700 dark:focus:ring-purple-800"
                           >
                             {loading ? (

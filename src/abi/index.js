@@ -1,5 +1,5 @@
 const config = {
-  aiPromptMarketplace: '0x6a540A70a15FBbB82F4b182e3f72082313D4178a',
+  AIPromptMarketplace: '0x997e177Dab75F47F48B6f9311596527fDa8bA999',
   artemisChallengesV2Address: '0x115b31BAc6Ec1eB799c868e69fD4fAD1d389725E',
 };
 

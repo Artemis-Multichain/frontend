@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck\
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment, useState, useEffect, useCallback } from 'react';
 import { FaRegCopy, FaWandMagicSparkles } from 'react-icons/fa6';
@@ -6,35 +6,62 @@ import { RiCloseCircleLine } from 'react-icons/ri';
 import { FiDownload } from 'react-icons/fi';
 import { MdOutlineShare, MdOutlineLock } from 'react-icons/md';
 import PromptSkeleton from '../skeleton/PromptSkeleton';
-import { ethers } from 'ethers';
+import { config } from '@/abi';
+import AIPromptMarketplace from '@/abi/AIPromptMarketplace.json';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { decryptPrompt, alternativeDecrypt } from '@/utils/encryptPrompt';
+import { decryptPrompt } from '@/utils/encryptPrompt';
 import generateKey from '@/utils/generateKey';
 import { ClipLoader } from 'react-spinners';
 import Link from 'next/link';
-import { checkTokenAccess } from '@/utils/checkTokenAccess';
+// import { checkTokenAccess } from '@/utils/checkTokenAccess';
+import { ethers, type Eip1193Provider } from 'ethers';
+import { useSmartAccount, useAccount } from '@particle-network/connectkit';
+import { AAWrapProvider, SendTransactionMode } from '@particle-network/aa';
 import { formatAddress } from '@/utils/formatAddress';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { findNFTIdentifierByCID } from '@/utils/getTokenId';
 import FullscreenImageModal from './FullscreenImageModal';
+
+interface PromptPremiumDetailsProps {
+  openMintModal: boolean;
+  handleOnClose: () => void;
+  image: string;
+  name: string;
+  price: string;
+  prompt: string;
+  creator: string;
+  cid: string;
+}
 
 const PromptPremiumDetails = ({
   openMintModal,
   handleOnClose,
   image,
   name,
+  // tokenId,
   price,
-  tokenPrice,
+  // tokenPrice,
   prompt,
   creator,
   cid,
-}) => {
-  const account = '';
+}: PromptPremiumDetailsProps) => {
+  const smartAccount = useSmartAccount();
+  const [hasAccess, setHasAccess] = useState(false);
+  const [decryptedResponse, setDecryptedResponse] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [buttonText, setButtonText] = useState('Copy Prompt');
-  const [amount, setAmount] = useState(1);
   const [isFullscreenModalOpen, setIsFullscreenModalOpen] = useState(false);
+  const { address } = useAccount();
+  const [txHash, setTxHash] = useState('');
+  const [tokenId, setTokenId] = useState<string | null>(null);
 
-  const handleImageClick = useCallback((e) => {
+  interface ImageClickEvent {
+    preventDefault: () => void;
+    stopPropagation: () => void;
+  }
+
+  const handleImageClick = useCallback((e: ImageClickEvent): void => {
     e.preventDefault();
     e.stopPropagation();
     setIsFullscreenModalOpen(true);
@@ -50,89 +77,250 @@ const PromptPremiumDetails = ({
     }
   }, [isFullscreenModalOpen, handleOnClose]);
 
-  const fetchCollectionId = async (address) => {
-    if (address && cid) {
-      const response = await getCollectionIdByUri(address, cid);
-      console.log('Collection ID Response:', response);
-      return response;
-    }
-    return null;
-  };
+  useEffect(() => {
+    if (openMintModal && cid) {
+      const getTokenId = async () => {
+        try {
+          let identifier = await findNFTIdentifierByCID(cid, 'base_sepolia');
 
-  const { data: accessData, isLoading: accessLoading } = useQuery({
-    queryKey: ['userAccess', account?.address, cid],
-    queryFn: async () => {
-      if (account?.address && cid) {
-        const accessResponse = await checkUserNftAccess(account.address, cid);
-        if (accessResponse === 'Has Access') {
-          const decryptionKey = generateKey(name);
-          const decryptedPrompt = decryptPrompt(prompt, decryptionKey);
-          return { hasAccess: true, decryptedPrompt };
+          setTokenId(identifier);
+        } catch (error) {
+          console.error('Error fetching token ID:', error);
+          toast.error('Failed to fetch token ID');
         }
-        return { hasAccess: false, decryptedPrompt: null };
-      }
-      return { hasAccess: false, decryptedPrompt: null };
-    },
-    enabled: !!openMintModal && !!account?.address && !!cid,
-  });
+      };
 
-  const { data: userCollectionId } = useQuery({
-    queryKey: ['userCollectionId', account?.address, cid],
-    queryFn: () => fetchCollectionId(account?.address),
-    enabled: !!account?.address && !!cid,
-  });
+      getTokenId();
+    }
+  }, [openMintModal, cid]);
 
-  const { data: creatorCollectionId } = useQuery({
-    queryKey: ['creatorCollectionId', creator, cid],
-    queryFn: () => fetchCollectionId(creator),
-    enabled: !!creator && !!cid,
-  });
-
-  const mintMutation = useMutation({
-    mutationFn: async () => {
-      if (!account) {
-        throw new Error('Please connect your wallet');
-      }
-
-      const response = await signAndSubmitTransaction(
-        mintPrompt({
-          collectionId: creatorCollectionId,
-          amount,
-        })
-      );
-
-      const committedTransactionResponse =
-        await aptosClient().waitForTransaction({
-          transactionHash: response.hash,
-        });
-
-      if (!committedTransactionResponse.success) {
-        throw new Error('Transaction failed. Check console for details.');
-      }
-
-      return `Successfully minted ${amount} NFT(s)!`;
-    },
-    onSuccess: (data) => {
-      toast.success('Successfully bought a Prompt NFT');
-    },
-    onError: (error) => {
-      console.error('Error minting NFT:', error);
-      toast.error(`Error minting NFT: ${error.message}`);
-    },
-  });
-
-  const handleMint = (e) => {
-    e.preventDefault();
-    mintMutation.mutate();
-  };
+  // const defaultBalance = useFetchBalance(selectedAccount);
+  // console.log('Default Balance:', defaultBalance);
 
   const handleCopyClick = () => {
     setButtonText('Copied!');
     navigator.clipboard.writeText(prompt);
+
     setTimeout(() => {
       setButtonText('Copy Prompt');
     }, 3000);
   };
+
+  const handleAccessRequest = async () => {
+    setIsLoading(true);
+
+    try {
+      // const accessResponse = await checkTokenAccess(tokenId, address);
+      const accessResponse = 'Has Access';
+
+      if (accessResponse === 'No Access') {
+        const decryptionKey = generateKey(name);
+        const decryptedPrompt = decryptPrompt(prompt, decryptionKey);
+        setDecryptedResponse(decryptedPrompt);
+        setHasAccess(true);
+      } else {
+        setHasAccess(false);
+      }
+    } catch (error) {
+      console.error('Error checking token access:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleMint = async (e: React.MouseEvent<HTMLElement>) => {
+    e.preventDefault();
+    setIsGenerating(true);
+    const mintNotification = toast.loading('Please wait! Minting a Prompt NFT');
+
+    try {
+      if (!tokenId) {
+        throw new Error('Token ID not available');
+      }
+
+      if (!smartAccount) {
+        throw new Error('Please connect your wallet');
+      }
+
+      const customProvider = new ethers.BrowserProvider(
+        new AAWrapProvider(
+          smartAccount,
+          SendTransactionMode.UserPaidNative
+        ) as Eip1193Provider,
+        'any'
+      );
+
+      if (!customProvider) {
+        throw new Error('Failed to initialize provider');
+      }
+
+      const signer = await customProvider.getSigner();
+
+      // Initialize contract
+      const mintPromptContract = new ethers.Contract(
+        config.AIPromptMarketplace,
+        AIPromptMarketplace,
+        signer
+      );
+
+      // Get token data
+      const tokenData = await mintPromptContract.getTokenData(tokenId);
+      console.log('\nToken Details:', {
+        tokenId,
+        creator: tokenData.creator,
+        supply: Number(tokenData.supply),
+        priceUSD: Number(tokenData.priceUSD) / 1_000_000,
+        royaltyPercentage: Number(tokenData.royaltyPercentage),
+      });
+
+      // Get ETH price and validate
+      const ethPrice = await mintPromptContract.getEthPrice();
+      if (ethPrice.toString() === '0') {
+        throw new Error('No valid ETH price available');
+      }
+      console.log('Current ETH Price:', Number(ethPrice) / 1_000_000, 'USD');
+
+      // Get the required ETH amount
+      const requiredETH = await mintPromptContract.getCurrentPriceETH(tokenId);
+      if (requiredETH.toString() === '0') {
+        throw new Error('Invalid price calculation');
+      }
+      console.log(
+        'Required Base Payment:',
+        ethers.formatEther(requiredETH),
+        'ETH'
+      );
+
+      // Calculate fees
+      const platformFee = await mintPromptContract.platformFee();
+      const platformFeeAmount =
+        (requiredETH * BigInt(platformFee)) / BigInt(10000);
+      const royaltyAmount =
+        (requiredETH * BigInt(tokenData.royaltyPercentage)) / BigInt(10000);
+
+      console.log('\nFee Breakdown:', {
+        platformFee: ethers.formatEther(platformFeeAmount),
+        royalty: ethers.formatEther(royaltyAmount),
+        toCreator: ethers.formatEther(
+          requiredETH - platformFeeAmount - royaltyAmount
+        ),
+      });
+
+      // Verify user has sufficient balance
+      const userAddress = await signer.getAddress();
+      const balance = await customProvider.getBalance(userAddress);
+
+      // Include estimated gas in balance check
+      const gasEstimate = await mintPromptContract.mint.estimateGas(tokenId, {
+        value: requiredETH,
+      });
+      const gasBuffer = (gasEstimate * BigInt(120)) / BigInt(100); // 20% buffer
+      const feeData = await customProvider.getFeeData();
+      const gasPrice = feeData.gasPrice ?? ethers.parseUnits('10', 'gwei');
+      const maxGasCost = gasBuffer * gasPrice;
+
+      const totalRequired = requiredETH + maxGasCost;
+
+      if (balance < totalRequired) {
+        throw new Error(
+          `Insufficient balance. Need ${ethers.formatEther(
+            totalRequired
+          )} ETH (including max gas)`
+        );
+      }
+
+      console.log('\nMinting NFT...', {
+        tokenId,
+        value: ethers.formatEther(requiredETH),
+        estimatedGas: gasBuffer.toString(),
+        maxGasCost: ethers.formatEther(maxGasCost),
+      });
+
+      // Execute mint transaction
+      const tx = await mintPromptContract.mint(tokenId, {
+        value: requiredETH,
+        gasLimit: gasBuffer,
+      });
+
+      console.log('Transaction sent:', tx.hash);
+      setTxHash(tx.hash);
+
+      toast.update(mintNotification, {
+        render: 'Transaction submitted, waiting for confirmation...',
+        type: 'info',
+        isLoading: true,
+      });
+
+      const receipt = await tx.wait();
+
+      // Parse mint event
+      const mintEvent = receipt.logs
+        .map((log: any) => {
+          try {
+            return mintPromptContract.interface.parseLog({
+              topics: [...log.topics],
+              data: log.data,
+            });
+          } catch {
+            return null;
+          }
+        })
+        .find((event: any) => event?.name === 'TokenMinted');
+
+      if (mintEvent && 'args' in mintEvent) {
+        console.log('\nNFT minted successfully!', {
+          tokenId: Number(mintEvent.args.tokenId),
+          buyer: mintEvent.args.buyer,
+          creator: mintEvent.args.creator,
+          pricePaid: ethers.formatEther(mintEvent.args.priceETH),
+          platformFee: ethers.formatEther(mintEvent.args.platformFeeAmount),
+          royalty: ethers.formatEther(mintEvent.args.royaltyAmount),
+        });
+
+        toast.update(mintNotification, {
+          render: 'Successfully minted NFT Prompt! 🎉',
+          type: 'success',
+          isLoading: false,
+          autoClose: 7000,
+        });
+
+        setHasAccess(true);
+      }
+    } catch (error: any) {
+      console.error('Mint failed:', error);
+
+      let errorMessage = 'Failed to mint NFT';
+
+      if (error.code === 'INSUFFICIENT_FUNDS') {
+        errorMessage = 'Insufficient balance for gas fee and NFT price';
+      } else if (error.message.includes('InsufficientSupply')) {
+        errorMessage = 'This NFT is sold out!';
+      } else if (error.message.includes('InvalidPrice')) {
+        errorMessage = 'No valid price available. Please wait and try again.';
+      } else if (error.message.includes('InvalidPayment')) {
+        errorMessage = 'Incorrect payment amount for minting';
+      } else if (error.message.includes('user rejected transaction')) {
+        errorMessage = 'Transaction was rejected';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.update(mintNotification, {
+        render: `Error: ${errorMessage}`,
+        type: 'error',
+        isLoading: false,
+        autoClose: 7000,
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  useEffect(() => {
+    if (openMintModal) {
+      handleAccessRequest();
+    }
+  }, [openMintModal]);
 
   return (
     <>
@@ -227,11 +415,11 @@ const PromptPremiumDetails = ({
                         <h4 className="pl-4 text-sm font-bold">
                           Prompt Details
                         </h4>
-                        {accessLoading ? (
+                        {isLoading ? (
                           <PromptSkeleton />
-                        ) : accessData?.hasAccess ? (
+                        ) : hasAccess ? (
                           <p className="ml-[10px] w-full mt-2 text-sm p-2 rounded-md border-[10px] border-[#292828] text-gray-300">
-                            {accessData.decryptedPrompt}
+                            {decryptedResponse}
                           </p>
                         ) : (
                           <div className="relative">
@@ -255,9 +443,9 @@ const PromptPremiumDetails = ({
 
                         <div className="pt-2 ml-[10px] w-[100%] text-sm flex justify-center gap-3 border-[10px] border-[#292828] ">
                           <button
-                            disabled={!accessData?.hasAccess}
+                            disabled={!hasAccess}
                             className={`p-2 mb-2 border-[6px] rounded-lg border-[#292828] w-[40%] flex items-center justify-center gap-1 ${
-                              !accessData?.hasAccess
+                              !hasAccess
                                 ? 'text-stone-500 cursor-not-allowed'
                                 : ''
                             }`}
@@ -267,9 +455,9 @@ const PromptPremiumDetails = ({
                             {buttonText}
                           </button>
                           <button
-                            disabled={!accessData?.hasAccess}
+                            disabled={!hasAccess}
                             className={`p-2 mb-2 border-[6px] rounded-lg border-[#292828] w-[40%] flex items-center gap-1 justify-center ${
-                              !accessData?.hasAccess
+                              !hasAccess
                                 ? 'text-stone-500 cursor-not-allowed'
                                 : ''
                             }`}
@@ -277,7 +465,7 @@ const PromptPremiumDetails = ({
                             <Link
                               href="/generate"
                               className={`flex items-center ${
-                                !accessData?.hasAccess
+                                !hasAccess
                                   ? 'text-stone-500 cursor-not-allowed'
                                   : ''
                               }`}
@@ -293,7 +481,7 @@ const PromptPremiumDetails = ({
                         <h4 className="pl-4 text-sm font-bold">
                           Negative Prompts
                         </h4>
-                        {accessData?.hasAccess && (
+                        {hasAccess && (
                           <p className="ml-[10px] w-full mt-2 text-sm p-2 rounded-md border-[10px] border-[#292828] text-gray-300 ">
                             cartoon, 2d, sketch, drawing, anime, open mouth,
                             nudity, naked, nsfw, helmet, head gear, close up,
@@ -308,7 +496,7 @@ const PromptPremiumDetails = ({
                           </p>
                         )}
 
-                        {!accessData?.hasAccess && (
+                        {!hasAccess && (
                           <div className="relative">
                             <p className="ml-[10px] w-full mt-2 text-sm p-2 rounded-md border-[10px] border-[#292828] text-gray-300 blur-[4px]">
                               Lorem ipsum dolor sit amet consectetur adipisicing
@@ -350,7 +538,9 @@ const PromptPremiumDetails = ({
                           <h1 className="text-[12px] text-gray-400 text-bold">
                             Chain
                           </h1>
-                          <p className="text-[14px] font-bold">Aptos Testnet</p>
+                          <p className="text-[14px] font-bold">
+                            Shardeum Testnet
+                          </p>
                         </div>
                         <div>
                           <h1 className="text-[12px] text-gray-400 text-bold">
@@ -374,25 +564,23 @@ const PromptPremiumDetails = ({
 
                       <div className="pt-8 text-start">
                         <div className="pt-2 ml-[10px] w-[100%] text-sm flex justify-center gap-3 border-[10px] border-[#292828] pb-2">
-                          {mintMutation.isLoading ? (
+                          {isGenerating ? (
                             <span className="text-white bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 w-[80%] font-bold px-32 hover:bg-purple-800 focus:ring-4 focus:outline-none focus:ring-purple-300 rounded-lg sm:w-auto py-4 text-center text-lg cursor-pointer hover:opacity-50">
                               <ClipLoader
                                 color="#f0f0f0"
-                                size="20px"
-                                height="30px"
-                                width="3px"
+                                size={30}
                               />
                             </span>
-                          ) : accessData?.hasAccess ? (
-                            <span className="text-white bg-gradient-to-r from-green-500 to-green-700 w-[80%] font-bold px-24 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 rounded-lg sm:w-auto py-4 text-center text-[14px]">
-                              You have Prompt Access
+                          ) : hasAccess ? (
+                            <span className="text-white bg-gradient-to-r from-green-500 to-green-700 w-[80%] font-bold px-24 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 rounded-lg sm:w-auto py-4 text-center text-lg">
+                              Prompt Bought
                             </span>
                           ) : (
                             <span
                               className="text-white bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 w-[80%] font-bold px-24 hover:bg-purple-800 focus:ring-4 focus:outline-none focus:ring-purple-300 rounded-lg sm:w-auto py-4 text-center text-lg cursor-pointer hover:opacity-50"
                               onClick={handleMint}
                             >
-                              Buy for {price} APT
+                              Buy for {price} USD
                             </span>
                           )}
                         </div>

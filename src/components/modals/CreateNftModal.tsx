@@ -43,7 +43,6 @@ const CreateNftModal = ({
   ]);
   const [price, setNftPrice] = useState(0);
   const [maxSupply, setMaxSupply] = useState(3000);
-  const [publicMintFeePerNFT, setPublicMintFeePerNFT] = useState(0.1);
   const [txHash, setTxHash] = useState('');
   const [isSwitchEnabled, setIsSwitchEnabled] = useState(false);
   const [completedMint, setCompletedMint] = useState(false);
@@ -80,7 +79,7 @@ const CreateNftModal = ({
     attributes: Attribute[];
   }
 
-  const createPromptNFT = async (e: React.FormEvent<HTMLFormElement>) => {
+  const createPromptNFT = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
 
     if (!address) {
@@ -176,13 +175,24 @@ const CreateNftModal = ({
         signer
       );
 
+      const priceWithDecimals = isSwitchEnabled
+        ? Math.round(price * 1_000_000)
+        : 0;
+
+      console.log('Price details:', {
+        originalPrice: price,
+        priceWithDecimals,
+        supply: isSwitchEnabled ? maxSupply : 1,
+      });
+
       const creationFee = await nftPromptFactory.creationFee();
       console.log('Creation fee:', creationFee.toString());
+      console.log('USD Price:', usdPrice);
 
       const tx = await nftPromptFactory.createPromptNFT.populateTransaction(
-        supply,
+        isSwitchEnabled ? maxSupply : 1,
         metadataUrl,
-        ethers.parseEther(usdPrice),
+        priceWithDecimals,
         10,
         {
           value: creationFee,
@@ -226,7 +236,7 @@ const CreateNftModal = ({
       setPromptNftName('');
       setPromptNftDescription('');
       setMaxSupply(1);
-      setPublicMintFeePerNFT(0.1);
+      // setPublicMintFeePerNFT(0.1);
       setCompletedMint(true);
       // setTxHash();
     } catch (error: any) {
@@ -240,7 +250,7 @@ const CreateNftModal = ({
   useEffect(() => {
     if (!isSwitchEnabled) {
       setMaxSupply(1);
-      setPublicMintFeePerNFT(0);
+      setNftPrice(0);
     }
   }, [isSwitchEnabled]);
 
@@ -391,9 +401,9 @@ const CreateNftModal = ({
                                 min="1"
                                 step="1"
                                 className="px-6 bg-transparent py-2 border border-gray-500 rounded-md focus:outline-none focus:ring focus:border-purple-500"
-                                value={publicMintFeePerNFT}
+                                value={price}
                                 onChange={(e) =>
-                                  setPublicMintFeePerNFT(Number(e.target.value))
+                                  setNftPrice(Number(e.target.value))
                                 }
                               />
                             </div>

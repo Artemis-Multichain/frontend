@@ -27,6 +27,11 @@
         "type": "bytes32"
       },
       {
+        "internalType": "bytes32",
+        "name": "_txOracleProgramId",
+        "type": "bytes32"
+      },
+      {
         "internalType": "uint256",
         "name": "_creationFee",
         "type": "uint256"
@@ -204,6 +209,11 @@
   },
   {
     "inputs": [],
+    "name": "NoTxResultAvailable",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "OnlyTokenCreator",
     "type": "error"
   },
@@ -247,6 +257,11 @@
   {
     "inputs": [],
     "name": "TransferFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "TxRequestFailed",
     "type": "error"
   },
   {
@@ -640,6 +655,44 @@
     "anonymous": false,
     "inputs": [
       {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "requestId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "txData",
+        "type": "string"
+      }
+    ],
+    "name": "TxRequested",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "requestId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "result",
+        "type": "string"
+      }
+    ],
+    "name": "TxResultGenerated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
         "indexed": false,
         "internalType": "string",
         "name": "value",
@@ -861,6 +914,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "getLatestTxResult",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -1004,6 +1070,32 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "latestTxRequestId",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "latestTxResult",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -1117,6 +1209,25 @@
       }
     ],
     "name": "requestPromptGeneration",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "txData",
+        "type": "string"
+      }
+    ],
+    "name": "requestTxProcessing",
     "outputs": [
       {
         "internalType": "bytes32",
@@ -1267,6 +1378,19 @@
     "name": "transferOwnership",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "txOracleProgramId",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {

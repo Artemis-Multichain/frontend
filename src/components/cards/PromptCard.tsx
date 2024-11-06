@@ -40,7 +40,7 @@ const PromptCard = ({ img, name, prompt, creator, price, cid }) => {
           <div className="w-full">
             <div>
               <img
-                src="https://s2.coinmarketcap.com/static/img/coins/200x200/21794.png"
+                src="https://cryptologos.cc/logos/arbitrum-arb-logo.svg?v=035"
                 alt=""
                 className="w-[34px] h-[35px] p-1 absolute top-4 right-3 bg-white/80 rounded-2xl"
               />

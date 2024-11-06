@@ -49,19 +49,32 @@ const MarketplaceC = () => {
       <MarketplaceHeader />
       <div className="ml-[10px] flex items-center justify-between mr-[40px]">
         <MarketplaceTab />
-        <div className="text-gray-400 flex items-center">
-          <p className="py-2 px-6 font-bold rounded-md text-sm bg-white/10">
-            Chain:
-          </p>
-          &nbsp; &nbsp; &nbsp;
-          <p className="font-bold flex items-center text-xs px-3 rounded-xl border border-gray-300 cursor-pointer">
-            <img
-              src="https://s2.coinmarketcap.com/static/img/coins/200x200/21794.png"
-              alt=""
-              className="w-[28px] h-[28px] p-1  rounded-2xl"
-            />
-            Base
-          </p>
+        <div className="flex">
+          <div className="text-gray-400 flex items-center">
+            <p className="py-2 px-6 font-bold rounded-md text-sm bg-white/10">
+              Chains:
+            </p>
+            &nbsp; &nbsp; &nbsp;
+            <p className="font-bold flex items-center text-xs px-3 rounded-xl border border-gray-300 cursor-pointer">
+              <img
+                src="https://cryptologos.cc/logos/arbitrum-arb-logo.svg?v=035"
+                alt=""
+                className="w-[28px] h-[28px] p-1  rounded-2xl"
+              />
+              Arbitrum
+            </p>
+          </div>
+          <div className="text-gray-400 flex items-center">
+            &nbsp; &nbsp; &nbsp;
+            <p className="font-bold flex items-center text-xs px-3 rounded-xl border border-gray-300 cursor-pointer">
+              <img
+                src="https://moonpay-marketing-c337344.payloadcms.app/media/base%20logo.webp"
+                alt=""
+                className="w-[28px] h-[28px] p-1  rounded-2xl"
+              />
+              Base
+            </p>
+          </div>
         </div>
       </div>
       <div className="grid grid-cols-5 2xl:grid-cols-7 gap-3 mt-4 ml-[35px] mr-[6px] pl-[200px]">

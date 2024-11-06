@@ -5,9 +5,8 @@ import { Fragment, useState } from 'react';
 
 import { AiOutlineInfoCircle } from 'react-icons/ai';
 import { SiChainguard } from 'react-icons/si';
-import { ClipLoader } from 'react-spinners';
-import axios from 'axios';
 import { usePromptGeneration } from '@/hooks/usePromptGeneration';
+import LoadingButton from './components/LoadingButton';
 
 const PromptGeneratorModal = ({
   openModal,
@@ -102,7 +101,6 @@ const PromptGeneratorModal = ({
                         </p>
                       </div>
                     </div>
-
                     <div className="py-1">
                       <p className="text-sm px-4 py-4 flex items-center gap-3 text-gray-400">
                         <AiOutlineInfoCircle className="text-6xl" />
@@ -112,10 +110,8 @@ const PromptGeneratorModal = ({
                         possibilities.
                       </p>
                     </div>
-
                     <div className="mx-6">
                       <textarea
-                        type="text"
                         id="success"
                         className="bg-[#0b0f172d] border border-gray-500 text-gray-200 dark:text-gray-400 placeholder-gray-500 dark:placeholder-gray-500 text-sm rounded-lg focus:ring-gray-300 focus:border-gray-300 focus:outline-none block w-[100%] p-1.5 dark:bg-gray-700 dark:border-gray-500"
                         placeholder="a flying car..."
@@ -125,25 +121,17 @@ const PromptGeneratorModal = ({
 
                     <div className="text-center py-6">
                       {loading ? (
-                        <button className="text-white  bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:bg-purple-800 focus:ring-4 focus:outline-none focus:ring-purple-300  rounded-lg text-sm font-bold w-[10px] sm:w-auto px-14 py-2 text-center dark:bg-purple-600 dark:hover:bg-purple-700 dark:focus:ring-purple-800">
-                          <ClipLoader
-                            color="#f0f0f0"
-                            size="20px"
-                            height="30px"
-                            width="3px"
-                          />
-                        </button>
+                        <LoadingButton className="text-white bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:bg-purple-800 focus:ring-4 focus:outline-none focus:ring-purple-300 rounded-lg text-sm font-bold w-[10px] sm:w-auto px-14 py-2 text-center dark:bg-purple-600 dark:hover:bg-purple-700 dark:focus:ring-purple-800" />
                       ) : (
                         <button
                           type="submit"
-                          className="text-white  bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:bg-purple-800 focus:ring-4 focus:outline-none focus:ring-purple-300  rounded-lg text-sm font-bold w-[140px] sm:w-auto px-5 py-2 text-center dark:bg-purple-600 dark:hover:bg-purple-700 dark:focus:ring-purple-800"
+                          className="text-white bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:bg-purple-800 focus:ring-4 focus:outline-none focus:ring-purple-300 rounded-lg text-sm font-bold w-[140px] sm:w-auto px-5 py-2 text-center dark:bg-purple-600 dark:hover:bg-purple-700 dark:focus:ring-purple-800"
                           onClick={handlePromptRequest}
                         >
                           &#128161; Spark Ideas
                         </button>
                       )}
                     </div>
-
                     <div className="py-6 px-6 flex font-normal text-sm">
                       <p className="flex items-center p-1 border border-gray-400 rounded-lg">
                         <SiChainguard className="text-4xl text-pink-500" />:

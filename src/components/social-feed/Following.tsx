@@ -1,4 +1,5 @@
 import React, { useRef, useCallback, useMemo } from 'react';
+import { useAccount } from '@particle-network/connectkit';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import Masonry, { ResponsiveMasonry } from 'react-responsive-masonry';
@@ -16,13 +17,13 @@ interface Post {
 }
 
 const Following = () => {
-  const account = '';
+  const { address } = useAccount();
   const baseUrl = process.env.NEXT_PUBLIC_API_URL;
 
   const fetchFollowingPosts = async ({ pageParam = 1 }) => {
-    if (!account?.address) return { results: [], nextPage: null };
+    if (!address) return { results: [], nextPage: null };
     const response = await axios.get(
-      `${baseUrl}/socialfeed/feed/?user_account=${account.address}&page=${pageParam}&page_size=20`
+      `${baseUrl}/socialfeed/feed/?user_account=${address}&page=${pageParam}&page_size=20`
     );
 
     return {
@@ -39,19 +40,19 @@ const Following = () => {
     status,
     error,
   } = useInfiniteQuery({
-    queryKey: ['followingPosts', account?.address],
+    queryKey: ['followingPosts', address],
     queryFn: fetchFollowingPosts,
     getNextPageParam: (lastPage) => lastPage.nextPage,
-    enabled: !!account?.address,
+    enabled: !!address,
   });
 
   const observer = useRef<IntersectionObserver | null>(null);
   const lastElementRef = useCallback(
-    (node) => {
+    (node: HTMLElement | null) => {
       if (isFetchingNextPage) return;
       if (observer.current) observer.current.disconnect();
       observer.current = new IntersectionObserver(
-        (entries) => {
+        (entries: IntersectionObserverEntry[]) => {
           if (entries[0].isIntersecting && hasNextPage) {
             fetchNextPage();
           }
@@ -101,7 +102,7 @@ const Following = () => {
     ));
   };
 
-  if (!account) {
+  if (!address) {
     return (
       <div className="text-white">
         Please connect your wallet to view posts from users you're following.

@@ -6,6 +6,7 @@ import { Fragment, useState } from 'react';
 import { AiOutlineInfoCircle } from 'react-icons/ai';
 import { SiChainguard } from 'react-icons/si';
 import { usePromptGeneration } from '@/hooks/usePromptGeneration';
+import { SiCodemagic } from 'react-icons/si';
 import LoadingButton from './components/LoadingButton';
 
 const PromptGeneratorModal = ({
@@ -103,7 +104,7 @@ const PromptGeneratorModal = ({
                     </div>
                     <div className="py-1">
                       <p className="text-sm px-4 py-4 flex items-center gap-3 text-gray-400">
-                        <AiOutlineInfoCircle className="text-6xl" />
+                        <SiCodemagic className="text-6xl text-pink-500 hover:rotate-180 transition-transform duration-700" />
                         Our prompt generator takes your basic idea and elevates
                         it to new heights of creativity. It's designed to expand
                         your initial prompt into a rich tapestry of imaginative
@@ -113,7 +114,7 @@ const PromptGeneratorModal = ({
                     <div className="mx-6">
                       <textarea
                         id="success"
-                        className="bg-[#0b0f172d] border border-gray-500 text-gray-200 dark:text-gray-400 placeholder-gray-500 dark:placeholder-gray-500 text-sm rounded-lg focus:ring-gray-300 focus:border-gray-300 focus:outline-none block w-[100%] p-1.5 dark:bg-gray-700 dark:border-gray-500"
+                        className="bg-[#0b0f172d] border border-gray-500 text-gray-200  placeholder-gray-500 text-sm rounded-lg focus:ring-gray-300 focus:border-gray-300 focus:outline-none block w-[100%] p-1.5"
                         placeholder="a flying car..."
                         onChange={(e) => setPromptInput(e.target.value)}
                       />
@@ -143,7 +144,7 @@ const PromptGeneratorModal = ({
                         </p>
                         <div className="w-[20%]">
                           <button
-                            className="text-white  border-gray-500 border-[1px] hover:opacity-80 focus:ring-4 focus:outline-none focus:ring-gray-300  rounded-lg text-sm font-bold w-[140px] sm:w-auto px-2 py-2 text-center dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-800"
+                            className="text-white  border-gray-500 border-[1px] hover:opacity-80 focus:ring-4 focus:outline-none focus:ring-gray-300  rounded-lg text-sm font-bold w-[140px] sm:w-auto px-2 py-2 text-center"
                             onClick={handleSendPrompt}
                           >
                             Use Prompt

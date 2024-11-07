@@ -17,6 +17,7 @@ import { ClipLoader } from 'react-spinners';
 import { useAccount, useSmartAccount } from '@particle-network/connectkit';
 import { AAWrapProvider, SendTransactionMode } from '@particle-network/aa';
 import { ethers, type Eip1193Provider } from 'ethers';
+import { useGenerationStore } from '@/store/useGenerationStore';
 
 interface CreateNftModalProps {
   openModal: boolean;
@@ -35,7 +36,7 @@ const CreateNftModal = ({
   const [promptNftName, setPromptNftName] = useState('');
   const [promptNftDescription, setPromptNftDescription] = useState('');
   const [attr, setAttr] = useState([
-    { trait_type: 'model', value: 'Stable Diffusion XL' },
+    { trait_type: 'model', value: '' },
     { trait_type: 'creator', value: '' },
     { trait_type: 'chain', value: '' },
     { trait_type: 'prompts', value: '' },
@@ -47,6 +48,7 @@ const CreateNftModal = ({
   const [isSwitchEnabled, setIsSwitchEnabled] = useState(false);
   const [completedMint, setCompletedMint] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { selectedChain, selectedModel } = useGenerationStore();
 
   const pinataApiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY;
   const pinataSecretApiKey = process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY;
@@ -101,8 +103,9 @@ const CreateNftModal = ({
 
     let updatedAttr: Attribute[] = [...attr];
     updatedAttr[3].value = promptValue;
-    updatedAttr[2].value = 'Base';
+    updatedAttr[2].value = selectedChain.name;
     updatedAttr[1].value = address;
+    updatedAttr[0].value = selectedModel.name;
     updatedAttr[4].value = isSwitchEnabled ? 'premium' : 'public';
 
     setAttr(updatedAttr);

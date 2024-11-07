@@ -18,6 +18,7 @@ import {
   copyToClipboard,
 } from '@/utils/particle-utils';
 import { ClipLoader } from 'react-spinners';
+import { useAAStore } from '@/store/aaStore';
 
 const ProfileNavbar = () => {
   const { isConnected, chainId, address, isConnecting, isDisconnected, chain } =
@@ -34,6 +35,8 @@ const ProfileNavbar = () => {
   const [recipientAddress, setRecipientAddress] = useState<string>('');
   const [isSending, setIsSending] = useState<boolean>(false);
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
+  const toggleAA = useAAStore((state) => state.toggleAA);
+  const isAADisabled = useAAStore((state) => state.isAADisabled);
 
   const fetchBalance = async (address: string) => {
     try {
@@ -59,7 +62,7 @@ const ProfileNavbar = () => {
         if (isConnected && smartAccount) {
           const address = await smartAccount.getAddress();
           console.log('Address:', address);
-          
+
           setUserAddress(address);
           fetchBalance(address);
         }
@@ -113,6 +116,9 @@ const ProfileNavbar = () => {
         openMintModal={openModal}
         handleOnClose={() => setOpenModal(false)}
       />
+      {/* <button onClick={toggleAA} className="text-white">
+        Account Abstraction is {isAADisabled ? 'Disabled' : 'Enabled'}
+      </button> */}
     </nav>
   );
 };

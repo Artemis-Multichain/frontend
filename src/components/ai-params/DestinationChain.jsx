@@ -1,38 +1,35 @@
-import { Fragment, useState } from 'react';
+import { Fragment } from 'react';
 import { Listbox, Transition } from '@headlessui/react';
-// import { CheckIcon, ChevronUpDownIcon } from '@heroicons/react/20/solid';
+import { useGenerationStore } from '@/store/useGenerationStore';
 
 const destination_chain = [
   {
     name: 'Base Sepolia',
-    img: 'https://s2.coinmarketcap.com/static/img/coins/200x200/21794.png',
+    img: 'https://moonpay-marketing-c337344.payloadcms.app/media/base%20logo.webp',
+  },
+  {
+    name: 'Arbitrum Sepolia',
+    img: 'https://cryptologos.cc/logos/arbitrum-arb-logo.svg?v=035',
   },
 ];
 
 export default function DestinationChain() {
-  const [selected, setSelected] = useState(destination_chain[0]);
+  const { selectedChain, setSelectedChain } = useGenerationStore();
 
   return (
     <div className="w-[60%] bg-transparent z-[999]">
-      <Listbox value={selected} onChange={setSelected}>
+      <Listbox value={selectedChain} onChange={setSelectedChain}>
         <div className="relative mt-1">
-          <Listbox.Button className="relative w-[200px]  text-black border-gray-600 border-[1px] bg-transparent rounded-lg  py-2 pl-3 pr-10 text-left shadow-md focus:outline-none focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-orange-300 sm:text-sm cursor-pointer">
+          <Listbox.Button className="relative w-[200px] text-black border-gray-600 border-[1px] bg-transparent rounded-lg py-2 pl-3 pr-10 text-left shadow-md focus:outline-none focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-orange-300 sm:text-sm cursor-pointer">
             <span className="block truncate bg-transparent text-white font-bold">
               <span className="text-gray-400 py-4 font-medium text-center ml-8">
                 Destination Chain
               </span>
               <br />
               <span className="flex items-center gap-2 mt-2">
-                <img src={selected.img} alt="" className="h-6 w-6 ml-6" />
-
-                {selected.name}
+                <img src={selectedChain.img} alt="" className="h-6 w-6 ml-6" />
+                {selectedChain.name}
               </span>
-            </span>
-            <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-              {/* <ChevronUpDownIcon
-                className="h-5 w-5 text-gray-400"
-                aria-hidden="true"
-              /> */}
             </span>
           </Listbox.Button>
           <Transition
@@ -66,11 +63,6 @@ export default function DestinationChain() {
                       >
                         {chain.name}
                       </span>
-                      {selected ? (
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-purple-600">
-                          {/* <CheckIcon className="h-5 w-5" aria-hidden="true" /> */}
-                        </span>
-                      ) : null}
                     </>
                   )}
                 </Listbox.Option>

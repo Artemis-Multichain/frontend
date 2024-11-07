@@ -1,4 +1,5 @@
 import React, { useRef, useCallback, useEffect } from 'react';
+import { useAccount } from '@particle-network/connectkit';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import Masonry, { ResponsiveMasonry } from 'react-responsive-masonry';
@@ -21,19 +22,19 @@ interface Prompt {
 }
 
 const UserGenerations = () => {
-  const account = '';
+  const { address } = useAccount();
   const baseUrl = process.env.NEXT_PUBLIC_API_URL;
   const queryClient = useQueryClient();
 
   const fetchUserPrompts = async ({ pageParam = 1 }) => {
-    if (!account?.address) return { results: [], nextPage: null };
+    if (!address) return { results: [], nextPage: null };
     const response = await axios.get(
-      `${baseUrl}/socialfeed/feed/?user_account=${account.address}&page=${pageParam}&page_size=20`
+      `${baseUrl}/socialfeed/feed/?user_account=${address}&page=${pageParam}&page_size=20`
     );
 
     // Filter the results to only include prompts where the account_address matches the connected address
     const filteredResults = response.data.results.filter(
-      (prompt: Prompt) => prompt.account_address === account.address
+      (prompt: Prompt) => prompt.account_address === address
     );
 
     return {
@@ -51,22 +52,26 @@ const UserGenerations = () => {
     error,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ['userPrompts', account?.address],
+    queryKey: ['userPrompts', address],
     queryFn: fetchUserPrompts,
     getNextPageParam: (lastPage) => lastPage.nextPage,
-    enabled: !!account?.address,
+    enabled: !!address,
   });
 
   useEffect(() => {
-    if (account?.address) {
+    if (address) {
       queryClient.removeQueries({ queryKey: ['userPrompts'] });
       refetch();
     }
-  }, [account?.address, queryClient, refetch]);
+  }, [address, queryClient, refetch]);
 
   const observer = useRef<IntersectionObserver | null>(null);
+  interface LastElementRefProps {
+    node: Element | null;
+  }
+
   const lastElementRef = useCallback(
-    (node) => {
+    (node: LastElementRefProps['node']) => {
       if (isFetchingNextPage) return;
       if (observer.current) observer.current.disconnect();
       observer.current = new IntersectionObserver(
@@ -113,7 +118,7 @@ const UserGenerations = () => {
     );
   };
 
-  if (!account) {
+  if (!address) {
     return (
       <div className="text-white">
         Please connect your wallet to view your generations.

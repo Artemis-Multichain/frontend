@@ -6,6 +6,7 @@ import './globals.css';
 import { ImageProvider } from '@/context/ImageContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ParticleConnectkit } from '@/connectkit';
+import AllocationModal from '@/components/modals/AllocationModal';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -18,6 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <AllocationModal />
       <body className={inter.className}>
         <ParticleConnectkit>
           <QueryClientProvider client={queryClient}>

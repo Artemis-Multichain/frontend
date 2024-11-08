@@ -1,27 +1,18 @@
-// @ts-nocheck
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/router';
+import { useSearchParams, useParams } from 'next/navigation';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import SubmissionsHeader from './SubmissionsHeader';
 import SubmissionCard from './cards/SubmissionCard';
 import SubmissionCardSkeleton from './skeleton/SubmissionCardSkeleton';
-import {
-  voteSubmission,
-  voteSubmissionSponsored,
-} from '@/utils/entry-functions/vote_submission';
+import type { ApiResponse, Submission } from './types';
+import { useVoteSubmission } from '@/hooks/useVoteSubmission';
 
-interface Submission {
-  submission_id: string;
-  creator: string;
-  ipfs_uri: string;
-  vote_count: number;
-  timestamp: string;
-}
-
-const fetchSubmissions = async (challengeId: string): Promise<Submission[]> => {
-  const response = await fetch(`/api/submissions/${challengeId}`);
+const fetchSubmissions = async (challengeId: string): Promise<ApiResponse> => {
+  const response = await fetch(`/api/challenges/${challengeId}/submissions`);
   if (!response.ok) {
     throw new Error('Failed to fetch submissions');
   }
@@ -29,23 +20,24 @@ const fetchSubmissions = async (challengeId: string): Promise<Submission[]> => {
 };
 
 const Submissions = () => {
-  const router = useRouter();
-  const { id: challengeId } = router.query;
+  const params = useParams();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+
+  const challengeId = params.id as string;
+  const chain = searchParams.get('chain');
+  const ipfsUri = searchParams.get('ipfsUri');
+
   const [localVoteCounts, setLocalVoteCounts] = useState<
-    Record<string, number>
+    Record<number, number>
   >({});
-  const [votingSubmissionId, setVotingSubmissionId] = useState<string | null>(
+  const [votingSubmissionId, setVotingSubmissionId] = useState<number | null>(
     null
   );
 
-  const {
-    data: submissions,
-    isLoading,
-    error,
-  } = useQuery<Submission[], Error>({
+  const { data, isLoading, error } = useQuery<ApiResponse, Error>({
     queryKey: ['submissions', challengeId],
-    queryFn: () => fetchSubmissions(challengeId as string),
+    queryFn: () => fetchSubmissions(challengeId),
     enabled: !!challengeId,
     onError: (error) => {
       toast.error(`Failed to load submissions: ${error.message}`);
@@ -53,95 +45,66 @@ const Submissions = () => {
   });
 
   useEffect(() => {
-    if (submissions) {
-      const initialCounts = submissions.reduce((acc, submission) => {
-        acc[submission.submission_id] = submission.vote_count;
+    if (data?.data.submissions) {
+      const initialCounts = data.data.submissions.reduce((acc, submission) => {
+        acc[submission.index] = submission.voteCount;
         return acc;
-      }, {} as Record<string, number>);
+      }, {} as Record<number, number>);
       setLocalVoteCounts(initialCounts);
     }
-  }, [submissions]);
+  }, [data?.data.submissions]);
 
-  const voteForSubmission = async (submissionId: string) => {
-    if (!account || account.address === null) {
-      toast.error('Please connect your wallet first');
-      return;
-    }
-
-    setVotingSubmissionId(submissionId);
-    let voteNotification;
-
-    try {
-      voteNotification = toast.loading('Processing your vote...');
-
-      const isPetraWallet = window.petra && wallet?.name === 'Petra';
-      let txHash;
-
-      if (txHash) {
-        toast.update(voteNotification, {
-          render: 'Vote submitted successfully',
-          type: 'success',
-          isLoading: false,
-          autoClose: 5000,
-        });
-
-        // Increase the vote count only after successful submission
-        setLocalVoteCounts((prev) => ({
-          ...prev,
-          [submissionId]: (prev[submissionId] || 0) + 1,
-        }));
-
-        // Invalidate and refetch the submissions query
-        queryClient.invalidateQueries(['submissions', challengeId]);
-      } else {
-        throw new Error('Failed to submit transaction');
-      }
-    } catch (error) {
-      console.error('Error in voting process:', error);
-      if (voteNotification) {
-        toast.update(voteNotification, {
-          render: `Voting failed: ${error.message}`,
-          type: 'error',
-          isLoading: false,
-          autoClose: 5000,
-        });
-      } else {
-        toast.error(`Voting failed: ${error.message}`, {
-          autoClose: 5000,
-        });
-      }
-    } finally {
-      setVotingSubmissionId(null);
-    }
+  const votingState = {
+    setLocalVoteCounts,
+    setVotingSubmissionId,
   };
 
-  return (
-    <div className="w-full pb-20 min-h-screen">
-      {typeof challengeId === 'string' && (
-        <SubmissionsHeader tokenId={challengeId} />
-      )}
-      <div className="ml-[250px]">
-        {isLoading ? (
-          <React.Fragment>
-            <SubmissionCardSkeleton />
-            <SubmissionCardSkeleton />
-            <SubmissionCardSkeleton />
-          </React.Fragment>
-        ) : error ? (
+  const { handleVote } = useVoteSubmission(challengeId, votingState);
+
+  if (isLoading) {
+    return (
+      <div className="w-full pb-20 min-h-screen">
+        <div className="ml-[250px]">
+          <SubmissionCardSkeleton />
+          <SubmissionCardSkeleton />
+          <SubmissionCardSkeleton />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full pb-20 min-h-screen">
+        <div className="ml-[250px]">
           <p className="text-red-500">
             Error loading submissions. Please try again.
           </p>
-        ) : submissions && submissions.length > 0 ? (
-          submissions.map((submission) => (
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full pb-20 min-h-screen">
+      <SubmissionsHeader
+        challengeName={data?.data.challenge.ipfsUrl}
+        stats={data?.data.stats}
+      />
+      <div className="ml-[250px]">
+        {data?.data.submissions && data.data.submissions.length > 0 ? (
+          data.data.submissions.map((submission) => (
             <SubmissionCard
-              key={submission.submission_id}
-              ipfsHash={submission.ipfs_uri}
+              key={submission.index}
+              ipfsHash={submission.ipfsHash}
               voteCount={
-                localVoteCounts[submission.submission_id]?.toString() || '0'
+                localVoteCounts[submission.index] || submission.voteCount
               }
-              onVote={() => voteForSubmission(submission.submission_id)}
-              submitter={submission.creator}
-              isVoting={votingSubmissionId === submission.submission_id}
+              onVote={() => handleVote(submission.index)}
+              submitter={submission.submitter}
+              isVoting={votingSubmissionId === submission.index}
+              chain={chain || undefined}
+              ipfsUri={ipfsUri || undefined}
             />
           ))
         ) : (

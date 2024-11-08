@@ -95,7 +95,7 @@ export const usePromptGeneration = (
   const marketplaceRef = useRef<ethers.Contract | null>(null);
   const signerRef = useRef<ethers.Signer | null>(null);
 
-  const chainConfig = getChainConfig(chain?.id ?? 84532);
+  const chainConfig = getChainConfig(chain?.id ?? 421614);
 
   const [state, setState] = useState<PromptGenerationState>({
     isLoading: false,
@@ -160,7 +160,7 @@ export const usePromptGeneration = (
       mounted = false;
       console.log('🧹 Cleanup: Contract initialization effect unmounted');
     };
-  }, [smartAccount]);
+  }, [smartAccount, chain?.id]);
 
   const pollPrompt = useCallback(async () => {
     if (

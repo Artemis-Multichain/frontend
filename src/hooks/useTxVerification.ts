@@ -96,7 +96,7 @@ export const useTxVerification = (
     };
 
     initContract();
-  }, []);
+  }, [chain?.id]);
 
   const pollTxResult = useCallback(async () => {
     const { marketplace, provider } = contractRefs.current;

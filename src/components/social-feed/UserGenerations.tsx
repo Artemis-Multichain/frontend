@@ -133,7 +133,7 @@ const UserGenerations = () => {
   return (
     <div className="ml-[0px] mt-1">
       {status === 'success' && (!data || data.pages[0].results.length === 0) ? (
-        <p className="text-white">You haven't created any prompts yet.</p>
+        <p className="text-white">You haven&apos;t created any prompts yet.</p>
       ) : (
         <ResponsiveMasonry
           columnsCountBreakPoints={{ 400: 2, 500: 3, 700: 4, 900: 5 }}

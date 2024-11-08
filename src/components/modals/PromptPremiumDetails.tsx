@@ -6,9 +6,9 @@ import { RiCloseCircleLine } from 'react-icons/ri';
 import { FiDownload } from 'react-icons/fi';
 import { MdOutlineShare, MdOutlineLock } from 'react-icons/md';
 import PromptSkeleton from '../skeleton/PromptSkeleton';
-import { config } from '@/abi';
+import { getChainConfig } from '@/abi';
 import AIPromptMarketplace from '@/abi/AIPromptMarketplace.json';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast, ToastContainer, Id } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { decryptPrompt } from '@/utils/encryptPrompt';
 import generateKey from '@/utils/generateKey';
@@ -21,6 +21,12 @@ import { AAWrapProvider, SendTransactionMode } from '@particle-network/aa';
 import { formatAddress } from '@/utils/formatAddress';
 import { findNFTIdentifierByCID } from '@/utils/getTokenId';
 import FullscreenImageModal from './FullscreenImageModal';
+import { useTxVerification } from '@/hooks/useTxVerification';
+import {
+  checkStoredAccess,
+  setStoredAccess,
+  getAccessKey,
+} from '@/utils/getLocalStorage';
 
 interface PromptPremiumDetailsProps {
   openMintModal: boolean;
@@ -52,9 +58,22 @@ const PromptPremiumDetails = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [buttonText, setButtonText] = useState('Copy Prompt');
   const [isFullscreenModalOpen, setIsFullscreenModalOpen] = useState(false);
-  const { address } = useAccount();
+  const { address, chain } = useAccount();
   const [txHash, setTxHash] = useState('');
   const [tokenId, setTokenId] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [mintNotificationId, setMintNotificationId] = useState<Id | null>(null);
+
+  const {
+    loading: verificationLoading,
+    error: verificationError,
+    verificationResult,
+    verifyTransaction,
+    isVerificationSuccessful,
+    reset: resetVerification,
+  } = useTxVerification();
+
+  const chainConfig = getChainConfig(chain?.id ?? 84532);
 
   interface ImageClickEvent {
     preventDefault: () => void;
@@ -106,32 +125,33 @@ const PromptPremiumDetails = ({
     }, 3000);
   };
 
-  const handleAccessRequest = async () => {
-    setIsLoading(true);
+  // const handleAccessRequest = async () => {
+  //   setIsLoading(true);
 
-    try {
-      // const accessResponse = await checkTokenAccess(tokenId, address);
-      const accessResponse = 'Has Access';
+  //   try {
+  //     // const accessResponse = await checkTokenAccess(tokenId, address);
+  //     const accessResponse = 'Has Access';
 
-      if (accessResponse === 'No Access') {
-        const decryptionKey = generateKey(name);
-        const decryptedPrompt = decryptPrompt(prompt, decryptionKey);
-        setDecryptedResponse(decryptedPrompt);
-        setHasAccess(true);
-      } else {
-        setHasAccess(false);
-      }
-    } catch (error) {
-      console.error('Error checking token access:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  //     if (accessResponse === 'No Access') {
+  //       const decryptionKey = generateKey(name);
+  //       const decryptedPrompt = decryptPrompt(prompt, decryptionKey);
+  //       setDecryptedResponse(decryptedPrompt);
+  //       setHasAccess(true);
+  //     } else {
+  //       setHasAccess(false);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error checking token access:', error);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   const handleMint = async (e: React.MouseEvent<HTMLElement>) => {
     e.preventDefault();
     setIsGenerating(true);
-    const mintNotification = toast.loading('Please wait! Minting a Prompt NFT');
+    const notificationId = toast.loading('Please wait! Minting a Prompt NFT');
+    setMintNotificationId(notificationId);
 
     try {
       if (!tokenId) {
@@ -158,9 +178,15 @@ const PromptPremiumDetails = ({
 
       // Initialize contract
       const mintPromptContract = new ethers.Contract(
-        config.AIPromptMarketplace,
+        chainConfig.AIPromptMarketplace,
         AIPromptMarketplace,
         signer
+      );
+
+      console.log('Minting NFT with token ID:', tokenId);
+      console.log(
+        'chainConfig.AIPromptMarketplace',
+        chainConfig.AIPromptMarketplace
       );
 
       // Get token data
@@ -191,7 +217,6 @@ const PromptPremiumDetails = ({
         'ETH'
       );
 
-      // Calculate fees
       const platformFee = await mintPromptContract.platformFee();
       const platformFeeAmount =
         (requiredETH * BigInt(platformFee)) / BigInt(10000);
@@ -245,7 +270,7 @@ const PromptPremiumDetails = ({
       console.log('Transaction sent:', tx.hash);
       setTxHash(tx.hash);
 
-      toast.update(mintNotification, {
+      toast.update(notificationId, {
         render: 'Transaction submitted, waiting for confirmation...',
         type: 'info',
         isLoading: true,
@@ -277,14 +302,56 @@ const PromptPremiumDetails = ({
           royalty: ethers.formatEther(mintEvent.args.royaltyAmount),
         });
 
-        toast.update(mintNotification, {
-          render: 'Successfully minted NFT Prompt! 🎉',
-          type: 'success',
-          isLoading: false,
-          autoClose: 7000,
+        toast.update(notificationId, {
+          render: 'NFT Minted! Starting verification...',
+          type: 'info',
+          isLoading: true,
         });
 
-        setHasAccess(true);
+        try {
+          await verifyTransaction(tx.hash);
+          setIsVerifying(true);
+
+          const checkResult = setInterval(() => {
+            if (verificationResult?.toLowerCase().includes('successful')) {
+              clearInterval(checkResult);
+              setIsVerifying(false);
+              setHasAccess(true);
+
+              const decryptionKey = generateKey(name);
+              const decryptedPrompt = decryptPrompt(prompt, decryptionKey);
+              setDecryptedResponse(decryptedPrompt);
+
+              if (cid) {
+                setStoredAccess(cid);
+              }
+            } else if (verificationError) {
+              clearInterval(checkResult);
+              setIsVerifying(false);
+            }
+          }, 2000);
+
+          setTimeout(() => {
+            clearInterval(checkResult);
+            if (isVerifying) {
+              setIsVerifying(false);
+              toast.update(notificationId, {
+                render: '⚠️ Verification timeout - please check status later',
+                type: 'warning',
+                isLoading: false,
+                autoClose: 5000,
+              });
+            }
+          }, 180000);
+        } catch (error) {
+          console.error('Verification failed:', error);
+          toast.update(notificationId, {
+            render: 'NFT Minted but Verification Failed to Start',
+            type: 'error',
+            isLoading: false,
+            autoClose: 5000,
+          });
+        }
       }
     } catch (error: any) {
       console.error('Mint failed:', error);
@@ -305,7 +372,7 @@ const PromptPremiumDetails = ({
         errorMessage = error.message;
       }
 
-      toast.update(mintNotification, {
+      toast.update(notificationId, {
         render: `Error: ${errorMessage}`,
         type: 'error',
         isLoading: false,
@@ -317,10 +384,50 @@ const PromptPremiumDetails = ({
   };
 
   useEffect(() => {
-    if (openMintModal) {
-      handleAccessRequest();
+    if (openMintModal && cid) {
+      const hasStoredAccess = checkStoredAccess(cid);
+      if (hasStoredAccess) {
+        setHasAccess(true);
+
+        const decryptionKey = generateKey(name);
+        const decryptedPrompt = decryptPrompt(prompt, decryptionKey);
+        setDecryptedResponse(decryptedPrompt);
+        return;
+      }
+
+      // handleAccessRequest();
     }
   }, [openMintModal]);
+
+  useEffect(() => {
+    if (verificationError && mintNotificationId) {
+      toast.update(mintNotificationId, {
+        render: `❌ Verification Error: ${verificationError}`,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+      });
+    }
+  }, [verificationError, mintNotificationId]);
+
+  useEffect(() => {
+    if (verificationResult?.toLowerCase().includes('successful') && cid) {
+      setHasAccess(true);
+      const decryptionKey = generateKey(name);
+      const decryptedPrompt = decryptPrompt(prompt, decryptionKey);
+      setDecryptedResponse(decryptedPrompt);
+      setStoredAccess(cid);
+
+      if (mintNotificationId) {
+        toast.update(mintNotificationId, {
+          render: 'Prompt Nft Minted and Verified Successfully!',
+          type: 'success',
+          isLoading: false,
+          autoClose: 5000,
+        });
+      }
+    }
+  }, [verificationResult, name, prompt, cid, mintNotificationId]);
 
   return (
     <>
@@ -566,14 +673,11 @@ const PromptPremiumDetails = ({
                         <div className="pt-2 ml-[10px] w-[100%] text-sm flex justify-center gap-3 border-[10px] border-[#292828] pb-2">
                           {isGenerating ? (
                             <span className="text-white bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 w-[80%] font-bold px-32 hover:bg-purple-800 focus:ring-4 focus:outline-none focus:ring-purple-300 rounded-lg sm:w-auto py-4 text-center text-lg cursor-pointer hover:opacity-50">
-                              <ClipLoader
-                                color="#f0f0f0"
-                                size={30}
-                              />
+                              <ClipLoader color="#f0f0f0" size={30} />
                             </span>
                           ) : hasAccess ? (
-                            <span className="text-white bg-gradient-to-r from-green-500 to-green-700 w-[80%] font-bold px-24 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 rounded-lg sm:w-auto py-4 text-center text-lg">
-                              Prompt Bought
+                            <span className="text-white bg-gradient-to-r from-green-500 to-green-700 w-[80%] font-bold px-24 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 rounded-lg sm:w-auto py-4 text-center text-sm">
+                              You have prompt access
                             </span>
                           ) : (
                             <span

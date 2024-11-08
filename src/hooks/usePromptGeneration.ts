@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef } from 'react';
 import { useEffect } from 'react';
-import { config } from '@/abi';
+import { getChainConfig } from '@/abi';
 import AIPromptMarketplace from '@/abi/AIPromptMarketplace.json';
 import { ethers, type Eip1193Provider } from 'ethers';
-import { useSmartAccount } from '@particle-network/connectkit';
+import { useSmartAccount, useAccount } from '@particle-network/connectkit';
 import { AAWrapProvider, SendTransactionMode } from '@particle-network/aa';
 
 const MINIMAL_SEDA_PROVER_ABI = [
@@ -89,9 +89,13 @@ export const usePromptGeneration = (
   maxPollingTime = 180000
 ) => {
   const smartAccount = useSmartAccount();
+  const { isConnected, address, chain } = useAccount();
+
   const providerRef = useRef<ethers.Provider | null>(null);
   const marketplaceRef = useRef<ethers.Contract | null>(null);
   const signerRef = useRef<ethers.Signer | null>(null);
+
+  const chainConfig = getChainConfig(84532);
 
   const [state, setState] = useState<PromptGenerationState>({
     isLoading: false,
@@ -137,13 +141,13 @@ export const usePromptGeneration = (
         signerRef.current = newSigner;
 
         const newMarketplace = new ethers.Contract(
-          config.AIPromptMarketplace,
+          chainConfig.AIPromptMarketplace,
           AIPromptMarketplace,
           newSigner
         );
         console.log(
           '✅ Marketplace contract initialized at:',
-          config.AIPromptMarketplace
+          chainConfig.AIPromptMarketplace
         );
         marketplaceRef.current = newMarketplace;
       } catch (error) {

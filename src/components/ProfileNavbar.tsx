@@ -15,6 +15,7 @@ import { formatEther } from 'viem';
 import { formatBalance } from '@/utils/particle-utils';
 import { useAAStore } from '@/store/aaStore';
 import { formatAddress } from '@/utils/formatAddress';
+import { useAllocationModal } from '@/hooks/useAllocationModal';
 
 const ProfileNavbar = () => {
   const { isConnected, chainId, address, isConnecting, isDisconnected, chain } =
@@ -33,6 +34,7 @@ const ProfileNavbar = () => {
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
   const toggleAA = useAAStore((state) => state.toggleAA);
   const isAADisabled = useAAStore((state) => state.isAADisabled);
+  const openAllocationModal = useAllocationModal((state) => state.openModal);
 
   const fetchBalance = async (address: string) => {
     try {
@@ -106,7 +108,7 @@ const ProfileNavbar = () => {
           >
             {isConnected
               ? userAddress && (
-                  <span className='flex items-center gap-1'>
+                  <span className="flex items-center gap-1">
                     <img
                       src="https://avatars.githubusercontent.com/u/101794619?s=280&v=4"
                       alt=""
@@ -117,15 +119,18 @@ const ProfileNavbar = () => {
                 )
               : 'Connect Wallet'}
           </li>
+          <li
+            className="text-white text-sm"
+            onClick={() => openAllocationModal()}
+          >
+            Unified Balance
+          </li>
         </ul>
       </div>
       <CreateChallengeModal
         openMintModal={openModal}
         handleOnClose={() => setOpenModal(false)}
       />
-      {/* <button onClick={toggleAA} className="text-white">
-        Account Abstraction is {isAADisabled ? 'Disabled' : 'Enabled'}
-      </button> */}
     </nav>
   );
 };

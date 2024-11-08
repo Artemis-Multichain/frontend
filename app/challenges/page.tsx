@@ -1,10 +1,10 @@
 'use client';
 
-import React from 'react';
 import Sidebar from '@/components/Sidebar';
 import ProfileNavbar from '@/components/ProfileNavbar';
 import Challenges from '@/components/Challenges';
 import Head from 'next/head';
+import AllocationModal from '@/components/modals/AllocationModal';
 
 const ChallengesC: React.FC = () => {
   return (
@@ -23,6 +23,7 @@ const ChallengesC: React.FC = () => {
         <div className="mt-2">
           <Challenges />
         </div>
+        <AllocationModal />
       </div>
     </>
   );

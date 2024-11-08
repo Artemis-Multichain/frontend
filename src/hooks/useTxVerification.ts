@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { getChainConfig } from '@/abi';
 import AIPromptMarketplace from '@/abi/AIPromptMarketplace.json';
+import { useAccount } from '@particle-network/connectkit';
 
 const MINIMAL_SEDA_PROVER_ABI = [
   {
@@ -37,7 +38,7 @@ interface TxVerificationState {
   requestId: string | null;
   verificationResult: string | null;
   transactionHash: string | null;
-  isVerificationSuccessful: boolean; 
+  isVerificationSuccessful: boolean;
 }
 
 export const useTxVerification = (
@@ -59,11 +60,12 @@ export const useTxVerification = (
     requestId: null,
     verificationResult: null,
     transactionHash: null,
-    isVerificationSuccessful: false, 
+    isVerificationSuccessful: false,
   });
 
   const [shouldPoll, setShouldPoll] = useState(false);
   const [pollingStartTime, setPollingStartTime] = useState<number | null>(null);
+  const { isConnected, address, chain } = useAccount();
 
   useEffect(() => {
     const initContract = async () => {
@@ -225,7 +227,10 @@ export const useTxVerification = (
   }, [shouldPoll, pollTxResult, pollingInterval]);
 
   const verifyTransaction = useCallback(
-    async (txHash: string, chainId: string = '84532') => {
+    async (
+      txHash: string,
+      chainId: string = chain?.id?.toString() || 'defaultChainId'
+    ) => {
       setState((prev) => ({
         ...prev,
         isLoading: true,
@@ -234,6 +239,7 @@ export const useTxVerification = (
       }));
 
       try {
+        console.log('Verifying with chain ID:', chainId);
         const response = await fetch('/api/tx-verification', {
           method: 'POST',
           headers: {

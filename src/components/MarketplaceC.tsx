@@ -21,6 +21,7 @@ interface NFT {
   identifier: string;
   attributes: Attribute[];
   promptPrice: number;
+  maxSupply: number;
 }
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -91,6 +92,9 @@ const MarketplaceC = () => {
                 price={prompt.prompt_nft_price}
                 prompt={prompt.prompt}
                 cid={prompt.cid}
+                chainName={prompt.chain}
+                ai_model={prompt.ai_model}
+                maxSupply={prompt.max_supply}
               />
             ))}
       </div>

@@ -37,6 +37,9 @@ interface PromptPremiumDetailsProps {
   prompt: string;
   creator: string;
   cid: string;
+  ai_model: string;
+  chainName: string;
+  maxSupply: number;
 }
 
 const PromptPremiumDetails = ({
@@ -50,6 +53,9 @@ const PromptPremiumDetails = ({
   prompt,
   creator,
   cid,
+  ai_model,
+  chainName,
+  maxSupply,
 }: PromptPremiumDetailsProps) => {
   const smartAccount = useSmartAccount();
   const [hasAccess, setHasAccess] = useState(false);
@@ -100,7 +106,12 @@ const PromptPremiumDetails = ({
     if (openMintModal && cid) {
       const getTokenId = async () => {
         try {
-          let identifier = await findNFTIdentifierByCID(cid, 'base_sepolia');
+          const chainIdentifier =
+            chainName === 'Arbitrum Sepolia'
+              ? 'arbitrum_sepolia'
+              : 'base_sepolia';
+
+          let identifier = await findNFTIdentifierByCID(cid, chainIdentifier);
 
           setTokenId(identifier);
         } catch (error) {
@@ -111,7 +122,10 @@ const PromptPremiumDetails = ({
 
       getTokenId();
     }
-  }, [openMintModal, cid]);
+  }, [openMintModal, cid, chainName]);
+
+  console.log(chain);
+  
 
   // const defaultBalance = useFetchBalance(selectedAccount);
   // console.log('Default Balance:', defaultBalance);
@@ -638,7 +652,7 @@ const PromptPremiumDetails = ({
                             AI Model
                           </h1>
                           <p className="text-[14px] font-bold">
-                            Stable Diffusion XL
+                            {ai_model || 'Stable Image Core'}
                           </p>
                         </div>
                         <div>
@@ -646,7 +660,7 @@ const PromptPremiumDetails = ({
                             Chain
                           </h1>
                           <p className="text-[14px] font-bold">
-                            Shardeum Testnet
+                            {chainName || 'Base Sepolia'}
                           </p>
                         </div>
                         <div>
@@ -659,13 +673,17 @@ const PromptPremiumDetails = ({
                           <h1 className="text-[12px] text-gray-400 text-bold">
                             Current Supply
                           </h1>
-                          <p className="text-[14px] font-bold">3000</p>
+                          <p className="text-[14px] font-bold">
+                            {maxSupply || 1000}
+                          </p>
                         </div>
                         <div>
                           <h1 className="text-[12px] text-gray-400 text-bold">
                             Clip Preset
                           </h1>
-                          <p className="text-[14px] font-bold">FAST_BLUE</p>
+                          <p className="text-[14px] font-bold">
+                            Flicker, Glitch, VHS
+                          </p>
                         </div>
                       </div>
 

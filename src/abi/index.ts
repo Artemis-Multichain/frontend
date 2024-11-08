@@ -25,7 +25,7 @@ const chainConfigs: ChainConfigs = {
   },
   // Arbitrum Sepolia
   421614: {
-    AIPromptMarketplace: '0xc045F975409FEb5075642a4a8C6af15608fe4EC4',
+    AIPromptMarketplace: '0x1b00C03bF2b798cfa2980538855c9357c3bB1CD1',
     artemisChallengesV2Address: '0xd6555A99D4C85103477f39aa62F5a1300ec952B1',
     usdcAddress: '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d',
     name: 'Arbitrum Sepolia',

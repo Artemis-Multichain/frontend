@@ -8,7 +8,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import base64ToBlob from '@/utils/base64toBlob';
 import axios from 'axios';
-import useStableDiffusion from '@/services/useStableDiffusion';
+import generateStableDiffusionImage from '@/services/useStableDiffusion';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAccount, useSmartAccount } from '@particle-network/connectkit';
 import { AAWrapProvider, SendTransactionMode } from '@particle-network/aa';
@@ -76,7 +76,7 @@ const MakeSubmissionModal: React.FC<MakeSubmissionModalProps> = ({
     setIsGenerating(true);
 
     try {
-      const data = await useStableDiffusion(submissionDescription, 1);
+      const data = await generateStableDiffusionImage(submissionDescription, 1);
 
       if (data && data.artifacts && data.artifacts.length > 0) {
         setBase64Image(data.artifacts[0].base64);

@@ -5,7 +5,7 @@ interface StableDiffusionOptions {
   numSamples?: number;
 }
 
-const useStableDiffusion = async (
+const generateStableDiffusionImage = async (
   prompt: string,
   options: StableDiffusionOptions = {}
 ) => {
@@ -105,4 +105,4 @@ const useStableDiffusion = async (
   }
 };
 
-export default useStableDiffusion;
+export default generateStableDiffusionImage;

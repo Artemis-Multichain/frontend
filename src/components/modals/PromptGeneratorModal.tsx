@@ -106,7 +106,7 @@ const PromptGeneratorModal = ({
                       <p className="text-sm px-4 py-4 flex items-center gap-3 text-gray-400">
                         <SiCodemagic className="text-6xl text-pink-500 hover:rotate-180 transition-transform duration-700" />
                         Our prompt generator takes your basic idea and elevates
-                        it to new heights of creativity. It's designed to expand
+                        it to new heights of creativity. It&apos;s designed to expand
                         your initial prompt into a rich tapestry of imaginative
                         possibilities.
                       </p>

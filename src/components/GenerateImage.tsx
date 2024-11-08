@@ -7,7 +7,7 @@ import { useImages } from '@/context/ImageContext';
 import { ScaleLoader } from 'react-spinners';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import useStableDiffusion from '@/services/useStableDiffusion';
+import generateStableDiffusionImage from '@/services/useStableDiffusion';
 import Tags from './ai-params/Tags';
 
 interface ImageObject {
@@ -50,7 +50,7 @@ const GenerateImage = () => {
       const promptToUse = editablePromptInput || receivedPrompt;
       setPrompts(promptToUse);
 
-      const data = await useStableDiffusion(promptToUse, {});
+      const data = await generateStableDiffusionImage(promptToUse, {});
 
       if (data && data.artifacts) {
         const imageObjects: ImageObject[] = data.artifacts.map(

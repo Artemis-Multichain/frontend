@@ -105,7 +105,7 @@ const Following = () => {
   if (!address) {
     return (
       <div className="text-white">
-        Please connect your wallet to view posts from users you're following.
+        Please connect your wallet to view posts from users you&apos;re following.
       </div>
     );
   }
@@ -117,7 +117,7 @@ const Following = () => {
   return (
     <div className="ml-[0px] mt-1">
       {status === 'success' && shuffledPosts.length === 0 ? (
-        <p className="text-white">No posts from users you're following yet.</p>
+        <p className="text-white">No posts from users you&apos;re following yet.</p>
       ) : (
         <ResponsiveMasonry
           columnsCountBreakPoints={{ 400: 2, 500: 3, 700: 4, 900: 5 }}

@@ -110,7 +110,7 @@ const ProfileNavbar = () => {
               ? userAddress && (
                   <span className="flex items-center gap-1">
                     <img
-                      src="https://avatars.githubusercontent.com/u/101794619?s=280&v=4"
+                      src="https://pbs.twimg.com/profile_images/1623919818108997633/o2JfMaqi_400x400.png"
                       alt=""
                       className="w-5 h-5"
                     />

@@ -3,39 +3,55 @@ import { useSmartAccount } from '@particle-network/connectkit';
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ethers, JsonRpcProvider, Contract, formatUnits } from 'ethers';
+import { sepolia } from 'viem/chains';
 
 const USDC_ABI = [
   'function balanceOf(address owner) view returns (uint256)',
   'function decimals() view returns (uint8)',
 ];
 
+const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
+
 const CHAIN_CONFIG = {
-  Ethereum: {
-    rpc: 'https://eth-mainnet.g.alchemy.com/v2/ZBlyrTmlupmkQCtp__-id7xK4uUxyYnF',
-    usdcAddress: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
-    chainId: 1,
+  Sepolia: {
+    rpc: `https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}`,
+    usdcAddress: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+    chainId: 11155111,
   },
-  Optimism: {
-    rpc: 'https://opt-mainnet.g.alchemy.com/v2/ZBlyrTmlupmkQCtp__-id7xK4uUxyYnF',
-    usdcAddress: '0x0b2c639c533813f4aa9d7837caf62653d097ff85',
-    chainId: 10,
+  'OP Sepolia': {
+    rpc: `https://opt-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}`,
+    usdcAddress: '0x5fd84259d66Cd46123540766Be93DFE6D43130D7',
+    chainId: 11155420,
   },
-  'Arbitrum One': {
-    rpc: 'https://arb-mainnet.g.alchemy.com/v2/ZBlyrTmlupmkQCtp__-id7xK4uUxyYnF',
-    usdcAddress: '0xaf88d065e77c8cc2239327c5edb3a432268e5831',
-    chainId: 42161,
+  'Arbitrum Sepolia': {
+    rpc: `https://arb-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}`,
+    usdcAddress: '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d',
+    chainId: 421614,
   },
-  Base: {
-    rpc: 'https://mainnet.base.org',
-    usdcAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-    chainId: 8453,
+  'Base Sepolia': {
+    rpc: `https://base-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}`,
+    usdcAddress: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+    chainId: 84532,
   },
   'BNB Chain': {
     rpc: 'https://bsc-dataseed.binance.org',
     usdcAddress: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d',
     chainId: 56,
   },
-};
+} as const;
+
+type ChainConfigKey = keyof typeof CHAIN_CONFIG;
+interface ChainInfo {
+  rpc: string;
+  usdcAddress: string;
+  chainId: number;
+}
+
+if (!ALCHEMY_API_KEY) {
+  throw new Error(
+    'NEXT_PUBLIC_ALCHEMY_API_KEY is not set in environment variables'
+  );
+}
 
 export interface Allocation {
   name: string;
@@ -148,24 +164,25 @@ const AllocationModal = () => {
 
   const getChainIcon = (chain: string) => {
     const iconMap: Record<string, string> = {
-      Optimism:
+      Sepolia: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=035',
+      'OP Sepolia':
         'https://cryptologos.cc/logos/optimism-ethereum-op-logo.svg?v=035',
-      'Arbitrum One':
+      'Arbitrum Sepolia':
         'https://cryptologos.cc/logos/arbitrum-arb-logo.svg?v=035',
-      Base: 'https://moonpay-marketing-c337344.payloadcms.app/media/base%20logo.webp',
+      'Base Sepolia':
+        'https://moonpay-marketing-c337344.payloadcms.app/media/base%20logo.webp',
       'BNB Chain': 'https://cryptologos.cc/logos/bnb-bnb-logo.svg?v=035',
-      Ethereum: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=035',
     };
     return iconMap[chain] || '';
   };
 
   const getChainIconBg = (chain: string) => {
     const bgMap: Record<string, string> = {
-      Optimism: 'bg-red-500',
-      'Arbitrum One': 'bg-blue-600',
-      Base: '',
-      'BNB Chain': '',
-      Ethereum: '',
+      Sepolia: 'bg-blue-500',
+      'OP Sepolia': 'bg-red-500',
+      'Arbitrum Sepolia': 'bg-blue-600',
+      Base: 'bg-blue-400',
+      'BNB Chain': 'bg-yellow-400',
     };
     return bgMap[chain] || '';
   };
@@ -187,7 +204,7 @@ const AllocationModal = () => {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="relative w-full max-w-md rounded-lg bg-black/90 p-6 shadow-xl"
+            className="relative w-full max-w-lg rounded-lg bg-black/90 p-6 shadow-xl"
           >
             <button
               onClick={closeModal}

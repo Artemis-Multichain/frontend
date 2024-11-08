@@ -38,8 +38,9 @@ const ABI = [
   ),
 ] as const satisfies Abi;
 
+const ALCHEMY_RPC_URL = process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL;
 const CHALLENGES_ADDRESS =
-  '0xd6555A99D4C85103477f39aa62F5a1300ec952B1' as Address;
+  process.env.NEXT_PUBLIC_ARTEMIS_CHALLENGES_ADDRESS as Address;
 
 interface Challenge {
   id: number;
@@ -63,67 +64,135 @@ interface ChallengeStats {
   };
   totalSubmissions: number;
   averageSubmissions: number;
+  failedToLoad: number;
 }
 
 const client = createPublicClient({
   chain: arbitrumSepolia,
-  transport: http(),
+  transport: http(ALCHEMY_RPC_URL, {
+    retryCount: 3,
+    retryDelay: 1000,
+    timeout: 20000,
+    batch: {
+      batchSize: 1024,
+      wait: 16,
+    },
+  }),
 });
+
+async function fetchChallengeDetails(id: bigint): Promise<Challenge | null> {
+  try {
+    const [
+      ipfsUrl,
+      duration,
+      startTime,
+      isActive,
+      winner,
+      prizeAmount,
+      prizeType,
+    ] = await client.readContract({
+      address: CHALLENGES_ADDRESS,
+      abi: ABI,
+      functionName: 'getChallengeDetails',
+      args: [id],
+    });
+
+    // Verify if the challenge is truly active
+    const currentTime = Math.floor(Date.now() / 1000);
+    const endTime = Number(startTime) + Number(duration);
+    if (!isActive || currentTime >= endTime) {
+      console.log(`Challenge ${id} is no longer active`);
+      return null;
+    }
+
+    // Get number of submissions with retry
+    let numSubmissions;
+    try {
+      numSubmissions = await client.readContract({
+        address: CHALLENGES_ADDRESS,
+        abi: ABI,
+        functionName: 'getNumberOfSubmissions',
+        args: [id],
+      });
+    } catch (error) {
+      console.error(`Failed to get submissions for challenge ${id}:`, error);
+      numSubmissions = BigInt(0);
+    }
+
+    const timeRemaining = endTime - currentTime;
+
+    return {
+      id: Number(id),
+      ipfsUrl,
+      duration: Number(duration),
+      startTime: Number(startTime),
+      endTime,
+      isActive,
+      winner,
+      prizeAmount: prizeAmount.toString(),
+      prizeType: Number(prizeType) === 1 ? 'USDC' : 'ETH',
+      numSubmissions: Number(numSubmissions),
+      timeRemaining,
+    };
+  } catch (error) {
+    console.error(`Failed to fetch details for challenge ${id}:`, error);
+    return null;
+  }
+}
 
 export async function GET() {
   try {
-    const activeChallengeIds = (await client.readContract({
-      address: CHALLENGES_ADDRESS,
-      abi: ABI,
-      functionName: 'getActiveChallenges',
-    })) as readonly bigint[];
+    // Get active challenge IDs with retry logic
+    let activeChallengeIds: readonly bigint[] = [];
+    let retryCount = 0;
+    const maxRetries = 3;
 
-    const challenges: Challenge[] = await Promise.all(
-      activeChallengeIds.map(async (id) => {
-        const [
-          ipfsUrl,
-          duration,
-          startTime,
-          isActive,
-          winner,
-          prizeAmount,
-          prizeType,
-        ] = await client.readContract({
+    while (retryCount < maxRetries) {
+      try {
+        activeChallengeIds = (await client.readContract({
           address: CHALLENGES_ADDRESS,
           abi: ABI,
-          functionName: 'getChallengeDetails',
-          args: [id],
-        });
+          functionName: 'getActiveChallenges',
+        })) as readonly bigint[];
+        break;
+      } catch (error) {
+        console.error(`Attempt ${retryCount + 1} failed:`, error);
+        retryCount++;
+        if (retryCount === maxRetries) {
+          throw new Error(
+            'Failed to fetch active challenges after multiple attempts'
+          );
+        }
+        // Wait before retrying
+        await new Promise((resolve) => setTimeout(resolve, 1000 * retryCount));
+      }
+    }
 
-        // Get number of submissions
-        const numSubmissions = await client.readContract({
-          address: CHALLENGES_ADDRESS,
-          abi: ABI,
-          functionName: 'getNumberOfSubmissions',
-          args: [id],
-        });
+    // Fetch details for each challenge with a timeout
+    const challengePromises = activeChallengeIds.map((id) => {
+      return Promise.race([
+        fetchChallengeDetails(id),
+        new Promise<null>((resolve) =>
+          setTimeout(() => {
+            console.log(`Timeout fetching challenge ${id}`);
+            resolve(null);
+          }, 5000)
+        ), // 5 second timeout
+      ]);
+    });
 
-        const currentTime = Math.floor(Date.now() / 1000);
-        const endTime = Number(startTime) + Number(duration);
-        const timeRemaining = endTime - currentTime;
-
-        return {
-          id: Number(id),
-          ipfsUrl,
-          duration: Number(duration),
-          startTime: Number(startTime),
-          endTime,
-          isActive,
-          winner,
-          prizeAmount: prizeAmount.toString(),
-          prizeType: Number(prizeType) === 1 ? 'USDC' : 'ETH',
-          numSubmissions: Number(numSubmissions),
-          timeRemaining,
-        };
-      })
+    const challengeResults = await Promise.all(challengePromises);
+    const challenges = challengeResults.filter(
+      (c): c is Challenge => c !== null
     );
 
-    const sortedChallenges = challenges.sort((a, b) => a.endTime - b.endTime);
+    const failedToLoad = challengeResults.filter((r) => r === null).length;
+
+    // Sort by end time and filter out any expired challenges
+    const currentTime = Math.floor(Date.now() / 1000);
+    const sortedChallenges = challenges
+      .filter((c) => c.endTime > currentTime)
+      .sort((a, b) => a.endTime - b.endTime);
 
     const stats: ChallengeStats = {
       totalChallenges: challenges.length,
@@ -146,6 +215,7 @@ export async function GET() {
           ? challenges.reduce((sum, c) => sum + c.numSubmissions, 0) /
             challenges.length
           : 0,
+      failedToLoad,
     };
 
     return NextResponse.json({
@@ -158,6 +228,9 @@ export async function GET() {
         chain: arbitrumSepolia.name,
         contractAddress: CHALLENGES_ADDRESS,
         timestamp: new Date().toISOString(),
+        totalAttempted: activeChallengeIds.length,
+        successfullyLoaded: challenges.length,
+        failedToLoad,
       },
     });
   } catch (error) {

@@ -15,8 +15,8 @@ interface ChainConfigs {
 const chainConfigs: ChainConfigs = {
   // Base Sepolia
   84532: {
-    AIPromptMarketplace: '0xFC0b043A8699b2fBFf894786F3D7A234D397a563',
-    artemisChallengesV2Address: '0x95271F9598E4d8c832A9ffFde6F3bf6A5fe2Aa82',
+    AIPromptMarketplace: '0x338A8D070eD0AD108A02b4A85D789e16a8640933',
+    artemisChallengesV2Address: '0xcF9577b373070Ae442Cc9F3B3e69CC6F53eb8787',
     usdcAddress: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
     name: 'Base Sepolia',
     chainId: 84532,
@@ -25,8 +25,8 @@ const chainConfigs: ChainConfigs = {
   },
   // Arbitrum Sepolia
   421614: {
-    AIPromptMarketplace: '0x1b00C03bF2b798cfa2980538855c9357c3bB1CD1',
-    artemisChallengesV2Address: '0xd6555A99D4C85103477f39aa62F5a1300ec952B1',
+    AIPromptMarketplace: '0x47887dC0305769285d8d793C3dd669f61274e959',
+    artemisChallengesV2Address: '0xC0275C30c2b22718a9C8f36747f13D4Da8147561',
     usdcAddress: '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d',
     name: 'Arbitrum Sepolia',
     chainId: 421614,

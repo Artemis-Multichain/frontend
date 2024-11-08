@@ -60,7 +60,7 @@ const MakeSubmissionModal: React.FC<MakeSubmissionModalProps> = ({
     ? new ethers.BrowserProvider(
         new AAWrapProvider(
           smartAccount,
-          SendTransactionMode.UserPaidNative
+          SendTransactionMode.Gasless
         ) as Eip1193Provider,
         'any'
       )

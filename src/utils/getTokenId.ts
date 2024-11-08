@@ -8,8 +8,8 @@ interface OpenSeaResponse {
 }
 
 const CONTRACT_ADDRESSES = {
-  base_sepolia: '0xFC0b043A8699b2fBFf894786F3D7A234D397a563',
-  arbitrum_sepolia: '0x1b00C03bF2b798cfa2980538855c9357c3bB1CD1',
+  base_sepolia: '0x338A8D070eD0AD108A02b4A85D789e16a8640933',
+  arbitrum_sepolia: '0x47887dC0305769285d8d793C3dd669f61274e959',
 } as const;
 
 type ChainName = keyof typeof CONTRACT_ADDRESSES;

@@ -50,7 +50,7 @@ export const useVoteSubmission = (
     ? new ethers.BrowserProvider(
         new AAWrapProvider(
           smartAccount,
-          SendTransactionMode.UserPaidNative
+          SendTransactionMode.Gasless
         ) as Eip1193Provider,
         'any'
       )

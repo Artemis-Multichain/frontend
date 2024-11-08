@@ -112,7 +112,7 @@ const ProfileNavbar = () => {
                     <img
                       src="https://pbs.twimg.com/profile_images/1623919818108997633/o2JfMaqi_400x400.png"
                       alt=""
-                      className="w-5 h-5"
+                      className="w-5 h-5 rounded-full"
                     />
                     {formatAddress(userAddress)}
                   </span>
@@ -120,7 +120,7 @@ const ProfileNavbar = () => {
               : 'Connect Wallet'}
           </li>
           <li
-            className="text-white text-sm"
+            className="text-gray-300 border-purple-600 border p-2 px-5 text-sm rounded-3xl cursor-pointer"
             onClick={() => openAllocationModal()}
           >
             Unified Balance

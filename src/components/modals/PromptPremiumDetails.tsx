@@ -8,7 +8,7 @@ import { MdOutlineShare, MdOutlineLock } from 'react-icons/md';
 import PromptSkeleton from '../skeleton/PromptSkeleton';
 import { getChainConfig } from '@/abi';
 import AIPromptMarketplace from '@/abi/AIPromptMarketplace.json';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast, ToastContainer, Id } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { decryptPrompt } from '@/utils/encryptPrompt';
 import generateKey from '@/utils/generateKey';
@@ -22,6 +22,11 @@ import { formatAddress } from '@/utils/formatAddress';
 import { findNFTIdentifierByCID } from '@/utils/getTokenId';
 import FullscreenImageModal from './FullscreenImageModal';
 import { useTxVerification } from '@/hooks/useTxVerification';
+import {
+  checkStoredAccess,
+  setStoredAccess,
+  getAccessKey,
+} from '@/utils/getLocalStorage';
 
 interface PromptPremiumDetailsProps {
   openMintModal: boolean;
@@ -57,6 +62,7 @@ const PromptPremiumDetails = ({
   const [txHash, setTxHash] = useState('');
   const [tokenId, setTokenId] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [mintNotificationId, setMintNotificationId] = useState<Id | null>(null);
 
   const {
     loading: verificationLoading,
@@ -119,32 +125,33 @@ const PromptPremiumDetails = ({
     }, 3000);
   };
 
-  const handleAccessRequest = async () => {
-    setIsLoading(true);
+  // const handleAccessRequest = async () => {
+  //   setIsLoading(true);
 
-    try {
-      // const accessResponse = await checkTokenAccess(tokenId, address);
-      const accessResponse = 'Has Access';
+  //   try {
+  //     // const accessResponse = await checkTokenAccess(tokenId, address);
+  //     const accessResponse = 'Has Access';
 
-      if (accessResponse === 'No Access') {
-        const decryptionKey = generateKey(name);
-        const decryptedPrompt = decryptPrompt(prompt, decryptionKey);
-        setDecryptedResponse(decryptedPrompt);
-        setHasAccess(true);
-      } else {
-        setHasAccess(false);
-      }
-    } catch (error) {
-      console.error('Error checking token access:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  //     if (accessResponse === 'No Access') {
+  //       const decryptionKey = generateKey(name);
+  //       const decryptedPrompt = decryptPrompt(prompt, decryptionKey);
+  //       setDecryptedResponse(decryptedPrompt);
+  //       setHasAccess(true);
+  //     } else {
+  //       setHasAccess(false);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error checking token access:', error);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   const handleMint = async (e: React.MouseEvent<HTMLElement>) => {
     e.preventDefault();
     setIsGenerating(true);
-    const mintNotification = toast.loading('Please wait! Minting a Prompt NFT');
+    const notificationId = toast.loading('Please wait! Minting a Prompt NFT');
+    setMintNotificationId(notificationId);
 
     try {
       if (!tokenId) {
@@ -263,7 +270,7 @@ const PromptPremiumDetails = ({
       console.log('Transaction sent:', tx.hash);
       setTxHash(tx.hash);
 
-      toast.update(mintNotification, {
+      toast.update(notificationId, {
         render: 'Transaction submitted, waiting for confirmation...',
         type: 'info',
         isLoading: true,
@@ -285,7 +292,6 @@ const PromptPremiumDetails = ({
         })
         .find((event: any) => event?.name === 'TokenMinted');
 
-      // In handleMint
       if (mintEvent && 'args' in mintEvent) {
         console.log('\nNFT minted successfully!', {
           tokenId: Number(mintEvent.args.tokenId),
@@ -296,7 +302,7 @@ const PromptPremiumDetails = ({
           royalty: ethers.formatEther(mintEvent.args.royaltyAmount),
         });
 
-        toast.update(mintNotification, {
+        toast.update(notificationId, {
           render: 'NFT Minted! Starting verification...',
           type: 'info',
           isLoading: true,
@@ -307,41 +313,29 @@ const PromptPremiumDetails = ({
           setIsVerifying(true);
 
           const checkResult = setInterval(() => {
-            // Check both verificationResult and if it includes "successful"
             if (verificationResult?.toLowerCase().includes('successful')) {
               clearInterval(checkResult);
               setIsVerifying(false);
               setHasAccess(true);
 
-              // After setting access, also decrypt the prompt
               const decryptionKey = generateKey(name);
               const decryptedPrompt = decryptPrompt(prompt, decryptionKey);
               setDecryptedResponse(decryptedPrompt);
 
-              toast.update(mintNotification, {
-                render: '✅ NFT Minted and Verified Successfully!',
-                type: 'success',
-                isLoading: false,
-                autoClose: 5000,
-              });
+              if (cid) {
+                setStoredAccess(cid);
+              }
             } else if (verificationError) {
               clearInterval(checkResult);
               setIsVerifying(false);
-              toast.update(mintNotification, {
-                render: `❌ Verification Error: ${verificationError}`,
-                type: 'error',
-                isLoading: false,
-                autoClose: 5000,
-              });
             }
           }, 2000);
 
-          // Cleanup after timeout
           setTimeout(() => {
             clearInterval(checkResult);
             if (isVerifying) {
               setIsVerifying(false);
-              toast.update(mintNotification, {
+              toast.update(notificationId, {
                 render: '⚠️ Verification timeout - please check status later',
                 type: 'warning',
                 isLoading: false,
@@ -351,7 +345,7 @@ const PromptPremiumDetails = ({
           }, 180000);
         } catch (error) {
           console.error('Verification failed:', error);
-          toast.update(mintNotification, {
+          toast.update(notificationId, {
             render: 'NFT Minted but Verification Failed to Start',
             type: 'error',
             isLoading: false,
@@ -378,7 +372,7 @@ const PromptPremiumDetails = ({
         errorMessage = error.message;
       }
 
-      toast.update(mintNotification, {
+      toast.update(notificationId, {
         render: `Error: ${errorMessage}`,
         type: 'error',
         isLoading: false,
@@ -390,19 +384,50 @@ const PromptPremiumDetails = ({
   };
 
   useEffect(() => {
-    if (openMintModal) {
-      handleAccessRequest();
+    if (openMintModal && cid) {
+      const hasStoredAccess = checkStoredAccess(cid);
+      if (hasStoredAccess) {
+        setHasAccess(true);
+
+        const decryptionKey = generateKey(name);
+        const decryptedPrompt = decryptPrompt(prompt, decryptionKey);
+        setDecryptedResponse(decryptedPrompt);
+        return;
+      }
+
+      // handleAccessRequest();
     }
   }, [openMintModal]);
 
   useEffect(() => {
-    if (verificationResult?.toLowerCase().includes('successful')) {
+    if (verificationError && mintNotificationId) {
+      toast.update(mintNotificationId, {
+        render: `❌ Verification Error: ${verificationError}`,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+      });
+    }
+  }, [verificationError, mintNotificationId]);
+
+  useEffect(() => {
+    if (verificationResult?.toLowerCase().includes('successful') && cid) {
       setHasAccess(true);
       const decryptionKey = generateKey(name);
       const decryptedPrompt = decryptPrompt(prompt, decryptionKey);
       setDecryptedResponse(decryptedPrompt);
+      setStoredAccess(cid);
+
+      if (mintNotificationId) {
+        toast.update(mintNotificationId, {
+          render: 'Prompt Nft Minted and Verified Successfully!',
+          type: 'success',
+          isLoading: false,
+          autoClose: 5000,
+        });
+      }
     }
-  }, [verificationResult, name, prompt]);
+  }, [verificationResult, name, prompt, cid, mintNotificationId]);
 
   return (
     <>
@@ -651,8 +676,8 @@ const PromptPremiumDetails = ({
                               <ClipLoader color="#f0f0f0" size={30} />
                             </span>
                           ) : hasAccess ? (
-                            <span className="text-white bg-gradient-to-r from-green-500 to-green-700 w-[80%] font-bold px-24 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 rounded-lg sm:w-auto py-4 text-center text-lg">
-                              Prompt Bought
+                            <span className="text-white bg-gradient-to-r from-green-500 to-green-700 w-[80%] font-bold px-24 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 rounded-lg sm:w-auto py-4 text-center text-sm">
+                              You have prompt access
                             </span>
                           ) : (
                             <span

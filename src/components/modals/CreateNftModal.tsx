@@ -218,9 +218,8 @@ const CreateNftModal = ({
       const txReceipt = await txResponse.wait();
 
       console.log(txReceipt?.hash || null);
-      console.log("selectedModel", selectedModel);
-      console.log("selectedChain", selectedChain);
-      
+      console.log('selectedModel', selectedModel);
+      console.log('selectedChain', selectedChain);
 
       if (isSwitchEnabled) {
         await axios.post(
@@ -237,7 +236,6 @@ const CreateNftModal = ({
             collection_name: promptNftName,
             max_supply: maxSupply,
             prompt_nft_price: usdPrice,
-            
           }
         );
       } else {

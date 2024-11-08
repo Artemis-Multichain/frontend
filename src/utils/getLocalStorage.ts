@@ -1,20 +1,19 @@
-const getLocalStorageKey = (promptId: string) => `prompt_access_${promptId}`;
+const getAccessKey = (promptId: string) => `prompt_access_status_${promptId}`;
 
-const checkLocalStorageAccess = (promptId: string) => {
+const checkStoredAccess = (promptId: string): boolean => {
   try {
-    return !!localStorage.getItem(getLocalStorageKey(promptId));
+    return localStorage.getItem(getAccessKey(promptId)) === 'true';
   } catch {
     return false;
   }
 };
 
-const setLocalStorageAccess = (promptId: string, decryptedContent: string) => {
+const setStoredAccess = (promptId: string) => {
   try {
-    localStorage.setItem(getLocalStorageKey(promptId), decryptedContent);
-    return true;
-  } catch {
-    return false;
+    localStorage.setItem(getAccessKey(promptId), 'true');
+  } catch (error) {
+    console.error('Failed to save access status:', error);
   }
 };
 
-export { checkLocalStorageAccess, setLocalStorageAccess };
+export { checkStoredAccess, setStoredAccess, getAccessKey };

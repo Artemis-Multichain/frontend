@@ -10,7 +10,7 @@ import axios from 'axios';
 
 const fetchLeaderboardData = async (endpoint: string) => {
   const response = await axios.get(
-    `https://deep-zitella-artemys-846660d9.koyeb.app${endpoint}`
+    `https://oyster-app-43f4r.ondigitalocean.app/docs${endpoint}`
   );
   return response.data;
 };

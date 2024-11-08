@@ -1,5 +1,4 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
-// @ts-nocheck
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment, useState } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
@@ -8,11 +7,49 @@ import axios from 'axios';
 import { ClipLoader } from 'react-spinners';
 import hoursToSeconds from '@/utils/hoursToSeconds';
 import { useQueryClient } from '@tanstack/react-query';
+import { getChainConfig } from '@/abi';
+import { ethers, parseEther, type Eip1193Provider } from 'ethers';
+import ArtemisChallengesV2 from '@/abi/ArtemisChallengesV2.json';
+import { useSmartAccount, useAccount } from '@particle-network/connectkit';
+import { AAWrapProvider, SendTransactionMode } from '@particle-network/aa';
 
-const CreateChallengeModal = ({ openMintModal, handleOnClose }) => {
+interface CreateChallengeModalProps {
+  openMintModal: boolean;
+  handleOnClose: () => void;
+}
+
+interface Metadata {
+  name: string;
+  description: string;
+  image: string;
+  prize: string;
+  duration: string;
+  external_url?: string;
+  attributes: Array<{
+    trait_type: string;
+    value: string;
+  }>;
+}
+
+interface PinataResponse {
+  data: {
+    IpfsHash: string;
+  };
+}
+
+interface CreateChallengeResponse {
+  txHash: string;
+}
+
+const CreateChallengeModal = ({
+  openMintModal,
+  handleOnClose,
+}: CreateChallengeModalProps) => {
   const queryClient = useQueryClient();
+  const smartAccount = useSmartAccount();
+  const { address, chain } = useAccount();
   const account = '';
-  const [imageFile, setImageFile] = useState(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [challengeName, setChallengeName] = useState('');
   const [challengeDescription, setChallengeDescription] = useState('');
   const [challengeDuration, setChallengeDuration] = useState('');
@@ -25,7 +62,11 @@ const CreateChallengeModal = ({ openMintModal, handleOnClose }) => {
   const pinataSecretApiKey = process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY;
   const pinataEndpoint = 'https://api.pinata.cloud/pinning/pinFileToIPFS';
 
-  const handleImageChange = (e) => {
+  interface ImageChangeEvent extends React.ChangeEvent<HTMLInputElement> {
+    target: HTMLInputElement & EventTarget & { files: FileList | null };
+  }
+
+  const handleImageChange = (e: ImageChangeEvent) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setImageFile(file);
@@ -34,45 +75,94 @@ const CreateChallengeModal = ({ openMintModal, handleOnClose }) => {
     }
   };
 
-  const handleCreateChallenge = async (e) => {
+  const handleCreateChallenge = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!smartAccount) {
+      throw new Error('Please connect your wallet');
+    }
+
+    if (!chain?.id) {
+      throw new Error('Chain ID is not defined');
+    }
+    const chainConfig = getChainConfig(chain.id);
+
     setIsCreating(true);
 
     try {
+      if (
+        !challengeName ||
+        !challengeDuration ||
+        !challengePrize ||
+        !imageFile
+      ) {
+        throw new Error('Please fill in all required fields');
+      }
+
+      toast.info('Uploading challenge content to IPFS...', {
+        autoClose: false,
+        toastId: 'uploading-ipfs',
+      });
+
       const formData = new FormData();
       formData.append('file', imageFile);
-      const imagePinataResponse = await axios.post(pinataEndpoint, formData, {
-        headers: {
-          'Content-Type': `multipart/form-data; boundary=${formData._boundary}`,
-          pinata_api_key: pinataApiKey,
-          pinata_secret_api_key: pinataSecretApiKey,
-        },
-      });
+      const imagePinataResponse: PinataResponse = await axios.post(
+        pinataEndpoint,
+        formData,
+        {
+          headers: {
+            'Content-Type': `multipart/form-data; boundary=${
+              (formData as any)._boundary
+            }`,
+            pinata_api_key: pinataApiKey,
+            pinata_secret_api_key: pinataSecretApiKey,
+          },
+        }
+      );
 
       if (!imagePinataResponse.data.IpfsHash) {
         throw new Error('Failed to upload image to Pinata');
       }
 
-      const imageUrl = `https://gateway.pinata.cloud/ipfs/${imagePinataResponse.data.IpfsHash}`;
+      const imageUrl = `ipfs://${imagePinataResponse.data.IpfsHash}`;
 
-      const metadata = {
+      const metadata: Metadata = {
         name: challengeName,
         description: challengeDescription,
         image: imageUrl,
-        prize: challengePrize,
+        prize: `${challengePrize} USDC`,
         duration: challengeDuration,
+        external_url: '',
+        attributes: [
+          {
+            trait_type: 'Duration',
+            value: `${challengeDuration} hours`,
+          },
+          {
+            trait_type: 'Prize',
+            value: `${challengePrize} USDC`,
+          },
+          {
+            trait_type: 'Status',
+            value: 'Active',
+          },
+        ],
       };
 
       const jsonBlob = new Blob([JSON.stringify(metadata)], {
         type: 'application/json',
       });
-      formData.set('file', jsonBlob);
-      const metadataPinataResponse = await axios.post(
+      const metadataFormData = new FormData();
+      metadataFormData.append('file', jsonBlob);
+
+      const metadataPinataResponse: PinataResponse = await axios.post(
         pinataEndpoint,
-        formData,
+        metadataFormData,
         {
           headers: {
-            'Content-Type': `multipart/form-data; boundary=${formData._boundary}`,
+            'Content-Type': `multipart/form-data; boundary=${
+              (metadataFormData as any)._boundary
+            }`,
             pinata_api_key: pinataApiKey,
             pinata_secret_api_key: pinataSecretApiKey,
           },
@@ -83,7 +173,80 @@ const CreateChallengeModal = ({ openMintModal, handleOnClose }) => {
         throw new Error('Failed to upload metadata to Pinata');
       }
 
-      const metadataUrl = `https://gateway.pinata.cloud/ipfs/${metadataPinataResponse.data.IpfsHash}`;
+      const ipfsUrl = `ipfs://${metadataPinataResponse.data.IpfsHash}`;
+
+      toast.dismiss('uploading-ipfs');
+      toast.info('Creating challenge on-chain...', {
+        autoClose: false,
+        toastId: 'creating-challenge',
+      });
+
+      const customProvider = new ethers.BrowserProvider(
+        new AAWrapProvider(
+          smartAccount,
+          SendTransactionMode.UserPaidNative
+        ) as Eip1193Provider,
+        'any'
+      );
+
+      const signer = await customProvider.getSigner();
+
+      if (!customProvider) {
+        throw new Error('Failed to initialize provider');
+      }
+
+      const usdcAddress = chainConfig.usdcAddress;
+      const usdcContract = new ethers.Contract(
+        usdcAddress,
+        ['function approve(address spender, uint256 amount) returns (bool)'],
+        signer
+      );
+
+      const prizeAmount = BigInt(Number(challengePrize) * 1_000_000);
+
+      toast.info('Approving USDC spend...', {
+        autoClose: false,
+        toastId: 'approving-usdc',
+      });
+
+      const approveTx = await usdcContract.approve(
+        chainConfig.artemisChallengesV2Address,
+        prizeAmount
+      );
+      await approveTx.wait();
+
+      toast.dismiss('approving-usdc');
+
+      const contract = new ethers.Contract(
+        chainConfig.artemisChallengesV2Address,
+        ArtemisChallengesV2,
+        signer
+      );
+
+      console.log("chainConfig.artemisChallengesV2Address", chainConfig.artemisChallengesV2Address);
+      
+
+      const durationInSeconds = Number(challengeDuration) * 3600;
+
+      const tx = await contract.createChallengeWithUSDC(
+        ipfsUrl,
+        durationInSeconds,
+        prizeAmount,
+        {
+          gasLimit: 500000,
+        }
+      );
+
+      const receipt = await tx.wait();
+
+      toast.dismiss('creating-challenge');
+      toast.success('Challenge created successfully!', {
+        autoClose: 5000,
+      });
+
+      queryClient.invalidateQueries(['activeChallenges']);
+
+      setTxHash(receipt.hash);
 
       setChallengeName('');
       setChallengeDescription('');
@@ -91,10 +254,13 @@ const CreateChallengeModal = ({ openMintModal, handleOnClose }) => {
       setChallengePrize('');
       setSelectedImage('/placeholder.jpg');
       setImageFile(null);
+
       handleOnClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in challenge creation process:', error);
-      toast.error(`Error: ${error.message}`);
+      toast.dismiss('uploading-ipfs');
+      toast.dismiss('creating-challenge');
+      toast.dismiss('approving-usdc');
     } finally {
       setIsCreating(false);
     }
@@ -160,7 +326,10 @@ const CreateChallengeModal = ({ openMintModal, handleOnClose }) => {
                     </div>
                     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                     <div className="text-white w-[100%]">
-                      <form className="ml-[40px] w-[400px] mt-6">
+                      <form
+                        className="ml-[40px] w-[400px] mt-6"
+                        onSubmit={handleCreateChallenge}
+                      >
                         <div className="relative z-0 w-full mb-6 group">
                           <input
                             name="floating"
@@ -170,7 +339,7 @@ const CreateChallengeModal = ({ openMintModal, handleOnClose }) => {
                             onChange={(e) => setChallengeName(e.target.value)}
                           />
                           <label
-                            for="floating"
+                            htmlFor="floating"
                             className="peer-focus:font-medium absolute text-sm text-gray-500 dark:text-gray-400 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:left-0 peer-focus:text-purple-600 peer-focus:dark:text-purple-500 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
                           >
                             Challenge Name
@@ -188,15 +357,15 @@ const CreateChallengeModal = ({ openMintModal, handleOnClose }) => {
                             }
                           />
                           <label
-                            for="floating_repeat"
+                            htmlFor="floating_repeat"
                             className="peer-focus:font-medium absolute text-sm text-gray-500 dark:text-gray-400 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:left-0 peer-focus:text-purple-600 peer-focus:dark:text-purple-500 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
                           >
                             Prompt NFT Description (Optional)
                           </label>
                         </div>
 
-                        <div class="text-gray-400 flex flex-col items-center mt-6">
-                          <label for="quantity" class="block mb-1">
+                        <div className="text-gray-400 flex flex-col items-center mt-6">
+                          <label htmlFor="quantity" className="block mb-1">
                             Challenge Duration (in hours):
                           </label>
 
@@ -229,18 +398,12 @@ const CreateChallengeModal = ({ openMintModal, handleOnClose }) => {
 
                         {isCreating ? (
                           <button className="text-white  bg-gradient-to-r from-purple-700 via-purple-500 to-pink-500 mt-3 hover:bg-purple-800 focus:ring-4 focus:outline-none focus:ring-purple-300  rounded-lg text-sm font-bold w-[140px] sm:w-auto px-[72px] py-2 text-center dark:bg-purple-600 dark:hover:bg-purple-700 dark:focus:ring-purple-800">
-                            <ClipLoader
-                              color="#f0f0f0"
-                              size="20px"
-                              height="30px"
-                              width="3px"
-                            />
+                            <ClipLoader color="#f0f0f0" size={30} />
                           </button>
                         ) : (
                           <button
                             type="submit"
                             className="text-white  bg-gradient-to-r from-purple-700 via-purple-500 to-pink-500 mt-3 hover:bg-purple-800 focus:ring-4 focus:outline-none focus:ring-purple-300  rounded-lg text-sm font-bold w-[140px] sm:w-auto px-8 py-2 text-center dark:bg-purple-600 dark:hover:bg-purple-700 dark:focus:ring-purple-800"
-                            // onClick={appropriateCreateChallengeFunction}
                           >
                             Create Challenge
                           </button>

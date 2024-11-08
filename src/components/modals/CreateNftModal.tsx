@@ -10,7 +10,8 @@ import base64ToBlob from '@/utils/base64toBlob';
 import { useImages } from '@/context/ImageContext';
 import { encryptPrompt } from '@/utils/encryptPrompt';
 import AIPromptMarketplace from '@/abi/AIPromptMarketplace.json';
-import { config } from '@/abi';
+import { getChainConfig } from '@/abi';
+import { useGetSmartAccountAddress } from '@/hooks/useGetSmartAccountAddress';
 import generateKey from '@/utils/generateKey';
 import axios from 'axios';
 import { ClipLoader } from 'react-spinners';
@@ -31,8 +32,14 @@ const CreateNftModal = ({
   image,
 }: CreateNftModalProps) => {
   const { prompts } = useImages();
-  const { isConnected, address } = useAccount();
+  const { isConnected, chain } = useAccount();
   const smartAccount = useSmartAccount();
+  const {
+    data: address,
+    isLoading,
+    isError,
+  } = useGetSmartAccountAddress(smartAccount);
+
   const [promptNftName, setPromptNftName] = useState('');
   const [promptNftDescription, setPromptNftDescription] = useState('');
   const [attr, setAttr] = useState([
@@ -167,13 +174,18 @@ const CreateNftModal = ({
         throw new Error('Provider is not initialized');
       }
 
+      if (!chain?.id) {
+        throw new Error('Chain ID is not defined');
+      }
+      const chainConfig = getChainConfig(chain.id);
+
       const usdPrice = isSwitchEnabled ? price.toString() : '0';
       const supply = isSwitchEnabled ? maxSupply : 1;
 
       const signer = await customProvider.getSigner();
 
       const nftPromptFactory = new ethers.Contract(
-        config.AIPromptMarketplace,
+        chainConfig.AIPromptMarketplace,
         AIPromptMarketplace,
         signer
       );
@@ -206,25 +218,31 @@ const CreateNftModal = ({
       const txReceipt = await txResponse.wait();
 
       console.log(txReceipt?.hash || null);
+      console.log("selectedModel", selectedModel);
+      console.log("selectedChain", selectedChain);
+      
 
       if (isSwitchEnabled) {
         await axios.post(
-          'https://deep-zitella-artemys-846660d9.koyeb.app/marketplace/add-premium-prompts/',
+          'https://oyster-app-43f4r.ondigitalocean.app/marketplace/add-premium-prompts/',
           {
             ipfs_image_url: imageUrl,
             account_address: address,
             prompt: promptValue,
             post_name: promptNftName,
             cid: metadataUrl,
+            ai_model: selectedModel.name,
+            chain: selectedChain.name,
             prompt_tag: '3D Art',
             collection_name: promptNftName,
             max_supply: maxSupply,
             prompt_nft_price: usdPrice,
+            
           }
         );
       } else {
         await axios.post(
-          `https://deep-zitella-artemys-846660d9.koyeb.app/prompts/add-public-prompts/`,
+          `https://oyster-app-43f4r.ondigitalocean.app/prompts/add-public-prompts/`,
           {
             ipfs_image_url: imageUrl,
             prompt: promptValue,

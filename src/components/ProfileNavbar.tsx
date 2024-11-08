@@ -12,13 +12,9 @@ import {
   useModal,
 } from '@particle-network/connectkit';
 import { formatEther } from 'viem';
-import {
-  formatBalance,
-  truncateAddress,
-  copyToClipboard,
-} from '@/utils/particle-utils';
-import { ClipLoader } from 'react-spinners';
+import { formatBalance } from '@/utils/particle-utils';
 import { useAAStore } from '@/store/aaStore';
+import { formatAddress } from '@/utils/formatAddress';
 
 const ProfileNavbar = () => {
   const { isConnected, chainId, address, isConnecting, isDisconnected, chain } =
@@ -108,7 +104,18 @@ const ProfileNavbar = () => {
             onClick={() => setOpen(true)}
             className="text-gray-300 border-purple-600 border p-2 px-5 text-sm rounded-3xl cursor-pointer"
           >
-            Connect Wallet
+            {isConnected
+              ? userAddress && (
+                  <span className='flex items-center gap-1'>
+                    <img
+                      src="https://avatars.githubusercontent.com/u/101794619?s=280&v=4"
+                      alt=""
+                      className="w-5 h-5"
+                    />
+                    {formatAddress(userAddress)}
+                  </span>
+                )
+              : 'Connect Wallet'}
           </li>
         </ul>
       </div>

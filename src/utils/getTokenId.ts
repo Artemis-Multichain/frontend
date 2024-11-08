@@ -9,7 +9,7 @@ interface OpenSeaResponse {
 
 const CONTRACT_ADDRESSES = {
   base_sepolia: '0xFC0b043A8699b2fBFf894786F3D7A234D397a563',
-  arbitrum_sepolia: '0xc045F975409FEb5075642a4a8C6af15608fe4EC4',
+  arbitrum_sepolia: '0x1b00C03bF2b798cfa2980538855c9357c3bB1CD1',
 } as const;
 
 type ChainName = keyof typeof CONTRACT_ADDRESSES;
@@ -50,6 +50,7 @@ export const findNFTIdentifierByCID = async (
     }
 
     const data: OpenSeaResponse = await response.json();
+    console.log(data);
 
     // Find the NFT with matching metadata URL
     const matchingNFT = data.nfts.find((nft) => {
@@ -60,7 +61,7 @@ export const findNFTIdentifierByCID = async (
     });
 
     console.log('Matching NFT:', matchingNFT?.identifier);
-    
+
     return matchingNFT?.identifier || null;
   } catch (error) {
     console.error('Error fetching NFT data:', error);

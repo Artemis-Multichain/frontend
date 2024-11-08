@@ -13,7 +13,17 @@ const getRandomWord = () => {
   return words[randomIndex];
 };
 
-const PromptCard = ({ img, name, prompt, creator, price, cid }) => {
+const PromptCard = ({
+  img,
+  name,
+  prompt,
+  creator,
+  price,
+  cid,
+  ai_model,
+  chainName,
+  maxSupply,
+}) => {
   const [openModal, setOpenModal] = useState(false);
   const [isPriceLoaded, setIsPriceLoaded] = useState(false);
 
@@ -39,11 +49,20 @@ const PromptCard = ({ img, name, prompt, creator, price, cid }) => {
         <div className="flex items-center justify-between gap-4 w-full">
           <div className="w-full">
             <div>
-              <img
-                src="https://cryptologos.cc/logos/arbitrum-arb-logo.svg?v=035"
-                alt=""
-                className="w-[34px] h-[35px] p-1 absolute top-4 right-3 bg-white/80 rounded-2xl"
-              />
+              {chainName === 'Arbitrum Sepolia' && (
+                <img
+                  src="https://cryptologos.cc/logos/arbitrum-arb-logo.svg?v=035"
+                  alt=""
+                  className="w-[34px] h-[35px] p-1 absolute top-4 right-3 bg-white/80 rounded-2xl"
+                />
+              )}
+              {chainName === 'Base Sepolia' && (
+                <img
+                  src="https://moonpay-marketing-c337344.payloadcms.app/media/base%20logo.webp"
+                  alt=""
+                  className="w-[34px] h-[35px] p-1 absolute top-4 right-3 bg-white/80 rounded-2xl"
+                />
+              )}
             </div>
             <div>
               {/* <img
@@ -96,6 +115,9 @@ const PromptCard = ({ img, name, prompt, creator, price, cid }) => {
         prompt={prompt}
         creator={creator}
         cid={cid}
+        chainName={chainName}
+        ai_model={ai_model}
+        maxSupply={maxSupply}
       />
     </div>
   );

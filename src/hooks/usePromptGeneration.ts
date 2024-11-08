@@ -95,7 +95,7 @@ export const usePromptGeneration = (
   const marketplaceRef = useRef<ethers.Contract | null>(null);
   const signerRef = useRef<ethers.Signer | null>(null);
 
-  const chainConfig = getChainConfig(84532);
+  const chainConfig = getChainConfig(chain?.id ?? 84532);
 
   const [state, setState] = useState<PromptGenerationState>({
     isLoading: false,

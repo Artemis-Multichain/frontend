@@ -24,11 +24,11 @@ const ExploreMasonry = () => {
 
   const observer = useRef<IntersectionObserver | null>(null);
   const lastElementRef = useCallback(
-    (node) => {
+    (node: HTMLElement | null) => {
       if (isLoading) return;
       if (observer.current) observer.current.disconnect();
       observer.current = new IntersectionObserver(
-        (entries) => {
+        (entries: IntersectionObserverEntry[]) => {
           if (entries[0].isIntersecting && hasMore) {
             setPage((prevPage) => prevPage + 1);
           }

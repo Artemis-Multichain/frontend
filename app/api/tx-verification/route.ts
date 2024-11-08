@@ -1,10 +1,8 @@
-// app/api/verify-transaction/route.ts
 import { ethers } from 'ethers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getChainConfig } from '@/abi';
 import AIPromptMarketplace from '@/abi/AIPromptMarketplace.json';
 
-// Define allowed methods
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -100,7 +98,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Add OPTIONS method to handle preflight requests
 export async function OPTIONS() {
   return NextResponse.json(
     {},

@@ -469,7 +469,7 @@ const CreateNftModal = ({
                         //   onClick={closeModal}
                       >
                         <a target="_blank" href={'' + txHash}>
-                          Confirm on Aptos
+                          Confirm transaction
                         </a>
                       </button>
                       &nbsp;&nbsp;&nbsp;

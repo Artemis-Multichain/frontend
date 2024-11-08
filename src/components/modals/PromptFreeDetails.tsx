@@ -274,7 +274,7 @@ const PromptFreeDetails = ({
                           <h1 className="text-[12px] text-gray-400 text-bold">
                             Chain
                           </h1>
-                          <p className="text-[14px] font-bold">Aptos Testnet</p>
+                          <p className="text-[14px] font-bold">Base Sepolia</p>
                         </div>
                         <div>
                           <h1 className="text-[12px] text-gray-400 text-bold">

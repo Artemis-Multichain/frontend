@@ -10,7 +10,7 @@ const generateStableDiffusionImage = async (
   options: StableDiffusionOptions = {}
 ) => {
   const token = process.env.NEXT_PUBLIC_SD_API_KEY;
-  const { useHighQuality = true, numSamples = 2 } = options;
+  const { useHighQuality = true, numSamples = 4 } = options;
 
   const enhancedPrompt = `fantasy, highly detailed, 8k resolution, professional photography, masterpiece, ${prompt}`;
 

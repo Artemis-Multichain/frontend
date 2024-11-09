@@ -1,13 +1,14 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 
-function setCorsHeaders(res: NextApiResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
-  res.setHeader('Content-Type', 'text/plain');
-}
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
+  'Content-Type': 'text/plain',
+};
 
+// Helper function to clean the prompt
 function cleanPrompt(prompt: string): string {
   let cleaned = prompt.trim();
   if (
@@ -21,29 +22,29 @@ function cleanPrompt(prompt: string): string {
   return cleaned;
 }
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  setCorsHeaders(res);
+// Handle OPTIONS requests for CORS
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'GET') {
-    return res.status(405).send('Method not allowed');
-  }
-
-  const apiKey = req.headers['x-api-key'];
+export async function GET(request: NextRequest) {
+  const apiKey = request.headers.get('x-api-key');
   if (!apiKey || apiKey !== process.env.API_KEY) {
-    return res.status(403).send('Forbidden: Invalid API Key');
+    return NextResponse.json(
+      { error: 'Forbidden: Invalid API Key' },
+      { status: 403, headers: corsHeaders }
+    );
   }
 
-  const { userPrompt } = req.query;
+  // Get user prompt from URL
+  const { searchParams } = new URL(request.url);
+  const userPrompt = searchParams.get('userPrompt');
 
-  if (!userPrompt || typeof userPrompt !== 'string') {
-    return res.status(400).send('Missing or invalid userPrompt');
+  if (!userPrompt) {
+    return NextResponse.json(
+      { error: 'Missing or invalid userPrompt' },
+      { status: 400, headers: corsHeaders }
+    );
   }
 
   const gptPrompt = `You are an advanced AI prompt engineer specializing in creating prompts for cutting-edge text-to-image AI models like Stable Diffusion and DALL-E. Your mission is to transform user inputs into extraordinarily detailed, vivid, and diverse image prompts that push the boundaries of photorealistic and artistic image generation.
@@ -70,17 +71,15 @@ Transform the following input into a unique, detailed prompt of 50-70 words: "${
 
 Important: Provide ONLY the transformed prompt as your response, without any quotes or additional formatting.`;
 
-  const postData = {
-    model: 'gpt-4',
-    messages: [{ role: 'user', content: gptPrompt }],
-    temperature: 1,
-    max_tokens: 300,
-  };
-
   try {
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
-      postData,
+      {
+        model: 'gpt-4',
+        messages: [{ role: 'user', content: gptPrompt }],
+        temperature: 1,
+        max_tokens: 300,
+      },
       {
         headers: {
           Authorization: `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}`,
@@ -93,15 +92,16 @@ Important: Provide ONLY the transformed prompt as your response, without any quo
     const generatedPrompt = cleanPrompt(
       response.data.choices[0].message.content
     );
-    res.status(200).send(generatedPrompt);
+
+    return new NextResponse(generatedPrompt, {
+      status: 200,
+      headers: corsHeaders,
+    });
   } catch (error) {
     console.error('Error:', error);
-    res.status(500).send('Internal Server Error');
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500, headers: corsHeaders }
+    );
   }
 }
-
-export const config = {
-  api: {
-    externalResolver: true,
-  },
-};

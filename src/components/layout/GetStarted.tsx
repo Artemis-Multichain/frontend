@@ -3,7 +3,7 @@
 
 import { motion } from 'framer-motion';
 
-import styles from '../../styles';
+import styles from './styles';
 import { startingFeatures } from '../../constants';
 import { TitleText, TypingText } from '../motion/CustomTexts';
 import StartSteps from '../motion/StartSteps';
@@ -12,7 +12,7 @@ import { staggerContainer, fadeIn, planetVariants } from '../../utils/motion';
 const GetStarted = () => (
   <section className={`${styles.paddings} relative z-10`}>
     <motion.div
-      variants={staggerContainer}
+      variants={staggerContainer(0.5, 0.2)}
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, amount: 0.25 }}
